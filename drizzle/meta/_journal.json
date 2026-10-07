@@ -1,0 +1,97 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791295167227,
+      "tag": "0000_outgoing_prowler",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791302877421,
+      "tag": "0001_module1_soft_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791303590382,
+      "tag": "0002_backend_infrastructure",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791303664946,
+      "tag": "0003_invoice_total_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791304010217,
+      "tag": "0004_unit_types_and_borrower_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791339540025,
+      "tag": "0005_inventory_stock_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791340852616,
+      "tag": "0006_payroll_settlements",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791359495171,
+      "tag": "0007_ledger_and_advances",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791360429108,
+      "tag": "0008_asset_rentals",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791361314803,
+      "tag": "0009_document_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791362620039,
+      "tag": "0010_subcontract_draws",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791363544598,
+      "tag": "0011_resort_leases",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791366742251,
+      "tag": "0012_bored_nuke",
+      "breakpoints": true
+    }
+  ]
+}

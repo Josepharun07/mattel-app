@@ -1,0 +1,1 @@
+ALTER TABLE "invoices" ALTER COLUMN "total_amount" SET DEFAULT '0.00';
