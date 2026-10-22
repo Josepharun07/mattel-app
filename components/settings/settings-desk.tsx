@@ -1,21 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, CreditCard, FileSignature, Settings, Sliders } from "lucide-react";
+import { Building2, CreditCard, FileSignature, Palette, Settings, Sliders } from "lucide-react";
+import { AppearancePanel } from "@/components/settings/appearance-panel";
 import { BankDetailsForm } from "@/components/settings/bank-details-form";
 import { BrandingUploader } from "@/components/settings/branding-uploader";
 import { CompanyProfileForm } from "@/components/settings/company-profile-form";
 import { InvoiceDefaultsForm } from "@/components/settings/invoice-defaults-form";
 import { UnitsManager } from "@/components/settings/units-manager";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { SystemSettingsView } from "@/lib/settings/profile";
-import { useWorkspace, type SessionRole } from "@/lib/workspace/store";
+import { useWorkspace } from "@/lib/workspace/store";
 
 const tabs = [
   { id: "profile", label: "Company Profile", icon: Building2 },
@@ -23,6 +17,7 @@ const tabs = [
   { id: "branding", label: "Branding & Assets", icon: FileSignature },
   { id: "units", label: "Measurement Units", icon: Sliders },
   { id: "defaults", label: "Invoice Defaults", icon: Settings },
+  { id: "appearance", label: "App Settings", icon: Palette },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -65,7 +60,8 @@ export function SettingsDesk({ initial }: { initial: SystemSettingsView }) {
             <button
               key={item.id}
               type="button"
-              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm ${active ? "bg-slate-900 text-white" : "bg-white"}`}
+              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm ${active ? "text-white" : "bg-white"}`}
+              style={active ? { backgroundColor: "var(--app-accent)" } : undefined}
               onClick={() => setTab(item.id)}
             >
               <Icon className="size-4" />
@@ -107,29 +103,12 @@ export function SettingsDesk({ initial }: { initial: SystemSettingsView }) {
             onSaved={(values) => save(values)}
           />
         ) : null}
+        {tab === "appearance" ? <AppearancePanel /> : null}
       </section>
 
       {initial.offline ? (
         <p className="text-sm text-muted-foreground">PostgreSQL is not connected. Changes stay in this browser.</p>
       ) : null}
-
-      <section className="rounded-xl border bg-white p-4">
-        <h2 className="font-medium">Session role</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Operators restore archived records. Super Admin can permanently purge them.
-        </p>
-        <div className="mt-3 max-w-xs">
-          <Select value={workspace.role} onValueChange={(value) => workspace.setRole(value as SessionRole)}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="OPERATOR">Operator</SelectItem>
-              <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
     </div>
   );
 }

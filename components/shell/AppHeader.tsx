@@ -21,7 +21,7 @@ export function AppHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 bg-steel px-4 text-white sm:px-6">
+    <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 px-4 text-white sm:px-6" style={{ backgroundColor: "var(--app-accent)" }}>
       <Link href="/" className="shrink-0 text-sm font-semibold tracking-wide">
         Mattel Infrastructures
       </Link>

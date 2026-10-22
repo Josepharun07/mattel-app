@@ -8,10 +8,21 @@ import {
   type ReactNode,
 } from "react";
 import { isoDate } from "@/lib/dates";
+import {
+  assignMemberAccent,
+  assignRoleAccent,
+  chooseOwnAccent,
+  isAccentId,
+  setColorEditing,
+  type AccentId,
+  type AccessRole,
+  type AppearanceUser,
+  type RoleColors,
+} from "@/lib/settings/appearance";
 
 const STORAGE_KEY = "mattel-infrastructures.workspace.v1";
 
-export type SessionRole = "OPERATOR" | "SUPER_ADMIN";
+export type SessionRole = AccessRole;
 export type PaymentMode = "UPI" | "Bank Transfer" | "Cash";
 export type AttendanceMark = "FULL" | "HALF" | "ABSENT";
 
@@ -114,6 +125,9 @@ export type PaymentRow = {
 
 type WorkspaceState = {
   settings: CompanySettings;
+  users: AppearanceUser[];
+  currentUserId: string;
+  roleColors: RoleColors;
   role: SessionRole;
   inventory: InventoryRow[];
   assets: AssetRow[];
@@ -145,9 +159,20 @@ const defaultSettings: CompanySettings = {
   managerDesignation: "Authorised Signatory",
 };
 
+function seedUsers(): AppearanceUser[] {
+  return [
+    { id: "user-operator", name: "Site operator", role: "OPERATOR", colorId: "slate", canEditColor: false },
+    { id: "user-manager", name: "Site manager", role: "MANAGER", colorId: "signal", canEditColor: true },
+    { id: "user-super", name: "Super admin", role: "SUPER_ADMIN", colorId: "steel", canEditColor: true },
+  ];
+}
+
 function createSeed(): WorkspaceState {
   return {
     settings: defaultSettings,
+    users: seedUsers(),
+    currentUserId: "user-operator",
+    roleColors: { OPERATOR: "slate" },
     role: "OPERATOR",
     inventory: [
       {
@@ -268,6 +293,11 @@ type WorkspaceContextValue = WorkspaceState & {
   ready: boolean;
   updateSettings: (patch: Partial<CompanySettings>) => void;
   setRole: (role: SessionRole) => void;
+  switchUser: (userId: string) => void;
+  setOwnColor: (colorId: AccentId) => string;
+  setOperatorColor: (colorId: AccentId) => void;
+  setMemberColor: (userId: string, colorId: AccentId) => void;
+  setMemberCanEdit: (userId: string, canEditColor: boolean) => void;
   addInventory: (row: Omit<InventoryRow, "id" | "deletedAt">) => void;
   updateInventory: (id: string, patch: Partial<InventoryRow>) => void;
   archiveInventory: (id: string) => void;
@@ -315,10 +345,46 @@ function hydrateSnapshot() {
   }
   try {
     const parsed = JSON.parse(raw) as Partial<WorkspaceState>;
+    const seed = createSeed();
+    const savedUsers = Array.isArray(parsed.users) ? parsed.users : [];
+    const users = seed.users.map((person) => {
+      const saved = savedUsers.find((item) => item.id === person.id);
+      if (!saved) {
+        return person;
+      }
+      return {
+        ...person,
+        name: typeof saved.name === "string" && saved.name.trim() ? saved.name : person.name,
+        role:
+          saved.role === "OPERATOR" || saved.role === "MANAGER" || saved.role === "SUPER_ADMIN"
+            ? saved.role
+            : person.role,
+        colorId: isAccentId(String(saved.colorId)) ? saved.colorId : person.colorId,
+        canEditColor: typeof saved.canEditColor === "boolean" ? saved.canEditColor : person.canEditColor,
+      };
+    });
+    const operatorColor = isAccentId(String(parsed.roleColors?.OPERATOR))
+      ? parsed.roleColors.OPERATOR
+      : seed.roleColors.OPERATOR;
+    const settled = assignRoleAccent(users, seed.roleColors, operatorColor);
+    let currentUserId = settled.users.some((person) => person.id === parsed.currentUserId)
+      ? parsed.currentUserId
+      : seed.currentUserId;
+    if (!parsed.users && parsed.role) {
+      const match = settled.users.find((person) => person.role === parsed.role);
+      if (match) {
+        currentUserId = match.id;
+      }
+    }
+    const current = settled.users.find((person) => person.id === currentUserId) ?? settled.users[0];
     snapshot = {
-      ...createSeed(),
+      ...seed,
       ...parsed,
       settings: normalizeSettings(parsed.settings),
+      users: settled.users,
+      roleColors: settled.roleColors,
+      currentUserId: current.id,
+      role: current.role,
     };
   } catch {
     snapshot = createSeed();
@@ -366,7 +432,78 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         update((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
       },
       setRole(role) {
-        update((current) => ({ ...current, role }));
+        update((current) => {
+          const match = current.users.find((person) => person.role === role);
+          if (!match) {
+            return current;
+          }
+          return { ...current, currentUserId: match.id, role: match.role };
+        });
+      },
+      switchUser(userId) {
+        update((current) => {
+          const match = current.users.find((person) => person.id === userId);
+          if (!match) {
+            return current;
+          }
+          return { ...current, currentUserId: match.id, role: match.role };
+        });
+      },
+      setOwnColor(colorId) {
+        let message = "Colour updated.";
+        update((current) => {
+          const person = current.users.find((item) => item.id === current.currentUserId);
+          if (!person) {
+            message = "Choose a person first.";
+            return current;
+          }
+          const result = chooseOwnAccent(person, current.roleColors, colorId);
+          if (!result.ok) {
+            message = result.message;
+            return current;
+          }
+          return {
+            ...current,
+            users: current.users.map((item) => (item.id === person.id ? result.user : item)),
+          };
+        });
+        return message;
+      },
+      setOperatorColor(colorId) {
+        update((current) => {
+          if (current.role !== "SUPER_ADMIN") {
+            return current;
+          }
+          const settled = assignRoleAccent(current.users, current.roleColors, colorId);
+          const person = settled.users.find((item) => item.id === current.currentUserId) ?? settled.users[0];
+          return { ...current, ...settled, currentUserId: person.id, role: person.role };
+        });
+      },
+      setMemberColor(userId, colorId) {
+        update((current) => {
+          if (current.role !== "SUPER_ADMIN") {
+            return current;
+          }
+          return {
+            ...current,
+            users: current.users.map((person) =>
+              person.id === userId ? assignMemberAccent(person, current.roleColors, colorId) : person,
+            ),
+          };
+        });
+      },
+      setMemberCanEdit(userId, canEditColor) {
+        update((current) => {
+          if (current.role !== "SUPER_ADMIN") {
+            return current;
+          }
+          return {
+            ...current,
+            users: current.users.map((person) =>
+              person.id === userId ? setColorEditing(person, canEditColor) : person,
+            ),
+          };
+        });
       },
       addInventory(row) {
         update((current) => ({

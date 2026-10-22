@@ -53,6 +53,7 @@
 }
 
 :root {
+  --app-accent: #334155;
   --radius: 0.625rem;
   --background: #f8fafc;
   --foreground: #0f172a;

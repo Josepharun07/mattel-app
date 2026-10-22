@@ -12,7 +12,7 @@ export default async function SettingsPage() {
       <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">System</p>
       <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
       <p className="mt-2 mb-6 text-sm text-muted-foreground">
-        Company profile, the Mattel Infrastructures operating account, logo, signature stamp, measurement units, and invoice defaults.
+        Company profile, the operating account, branding, measurement units, invoice defaults, and the personal app colour.
       </p>
       <SettingsDesk initial={settings} />
     </div>
