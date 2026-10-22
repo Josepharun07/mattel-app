@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { AppHeader } from "@/components/shell/AppHeader";
+import { AccentRoot } from "@/components/shell/accent-root";
 import { WorkspaceProvider } from "@/lib/workspace/store";
 import "./globals.css";
 
@@ -28,8 +29,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${inter.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-canvas text-steel">
         <WorkspaceProvider>
-          <AppHeader />
-          <main className="flex-1">{children}</main>
+          <AccentRoot>
+            <AppHeader />
+            <main className="flex-1">{children}</main>
+          </AccentRoot>
         </WorkspaceProvider>
       </body>
     </html>

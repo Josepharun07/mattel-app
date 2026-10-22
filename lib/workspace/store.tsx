@@ -363,9 +363,8 @@ function hydrateSnapshot() {
         canEditColor: typeof saved.canEditColor === "boolean" ? saved.canEditColor : person.canEditColor,
       };
     });
-    const operatorColor = isAccentId(String(parsed.roleColors?.OPERATOR))
-      ? parsed.roleColors.OPERATOR
-      : seed.roleColors.OPERATOR;
+    const savedOperator = parsed.roleColors?.OPERATOR;
+    const operatorColor = savedOperator && isAccentId(savedOperator) ? savedOperator : seed.roleColors.OPERATOR;
     const settled = assignRoleAccent(users, seed.roleColors, operatorColor);
     let currentUserId = settled.users.some((person) => person.id === parsed.currentUserId)
       ? parsed.currentUserId
