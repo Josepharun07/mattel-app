@@ -378,9 +378,6 @@ export async function createInvoice(payload: CreateInvoicePayload) {
     revalidatePath("/invoices");
     revalidatePath("/invoices/create");
     revalidatePath("/inventory");
-    if (parsed.data.projectId) {
-      revalidatePath(`/projects/${parsed.data.projectId}/ledger`);
-    }
 
     return {
       success: true,

@@ -1,4 +1,4 @@
-export const accessRoles = ["OPERATOR", "MANAGER", "SUPER_ADMIN"] as const;
+export const accessRoles = ["OPERATOR", "MANAGER", "OWNER", "SUPER_ADMIN"] as const;
 
 export type AccessRole = (typeof accessRoles)[number];
 
@@ -22,6 +22,10 @@ export type AppearanceUser = {
 };
 
 export type RoleColors = { OPERATOR: AccentId };
+
+export function isAccessRole(value: string): value is AccessRole {
+  return (accessRoles as readonly string[]).includes(value);
+}
 
 export function isAccentId(value: string): value is AccentId {
   return accentPalette.some((color) => color.id === value);

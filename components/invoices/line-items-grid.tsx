@@ -87,7 +87,7 @@ export function LineItemsGrid({
       </div>
       <div className="space-y-3">
         {lines.map((line, index) => (
-          <div key={line.id} className="space-y-3 rounded-md border border-border bg-white p-3">
+          <div key={line.id} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-muted-foreground">Row {index + 1}</p>
               <Button

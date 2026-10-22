@@ -13,6 +13,7 @@ import {
   assignRoleAccent,
   chooseOwnAccent,
   isAccentId,
+  isAccessRole,
   setColorEditing,
   type AccentId,
   type AccessRole,
@@ -163,6 +164,7 @@ function seedUsers(): AppearanceUser[] {
   return [
     { id: "user-operator", name: "Site operator", role: "OPERATOR", colorId: "slate", canEditColor: false },
     { id: "user-manager", name: "Site manager", role: "MANAGER", colorId: "signal", canEditColor: true },
+    { id: "user-owner", name: "Owner", role: "OWNER", colorId: "indigo", canEditColor: true },
     { id: "user-super", name: "Super admin", role: "SUPER_ADMIN", colorId: "steel", canEditColor: true },
   ];
 }
@@ -355,10 +357,7 @@ function hydrateSnapshot() {
       return {
         ...person,
         name: typeof saved.name === "string" && saved.name.trim() ? saved.name : person.name,
-        role:
-          saved.role === "OPERATOR" || saved.role === "MANAGER" || saved.role === "SUPER_ADMIN"
-            ? saved.role
-            : person.role,
+        role: isAccessRole(String(saved.role)) ? saved.role : person.role,
         colorId: isAccentId(String(saved.colorId)) ? saved.colorId : person.colorId,
         canEditColor: typeof saved.canEditColor === "boolean" ? saved.canEditColor : person.canEditColor,
       };

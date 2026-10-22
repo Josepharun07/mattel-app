@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
-import { AppHeader } from "@/components/shell/AppHeader";
 import { AccentRoot } from "@/components/shell/accent-root";
+import { AppShell } from "@/components/shell/AppShell";
 import { WorkspaceProvider } from "@/lib/workspace/store";
 import "./globals.css";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     template: "%s · Mattel Infrastructures",
   },
   description:
-    "Construction ledgers, inventory, payroll, and billing for Mattel Infrastructures.",
+    "Inventory, rentals, payroll, and billing for Mattel Infrastructures.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -30,8 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-canvas text-steel">
         <WorkspaceProvider>
           <AccentRoot>
-            <AppHeader />
-            <main className="flex-1">{children}</main>
+            <AppShell>{children}</AppShell>
           </AccentRoot>
         </WorkspaceProvider>
       </body>

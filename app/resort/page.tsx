@@ -1,14 +1,5 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { SplitScreenEditor } from "@/components/invoicing/SplitScreenEditor";
-import { StudioSkeleton } from "@/components/invoicing/StudioSkeleton";
-
-export const metadata: Metadata = { title: "Resort billing" };
+import { redirect } from "next/navigation";
 
 export default function ResortPage() {
-  return (
-    <Suspense fallback={<StudioSkeleton />}>
-      <SplitScreenEditor documentKind="RESORT" />
-    </Suspense>
-  );
+  redirect("/resort-rental");
 }

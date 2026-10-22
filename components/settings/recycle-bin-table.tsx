@@ -49,7 +49,7 @@ import {
 const filters: { id: GovernanceFilter; label: string }[] = [
   { id: "all", label: "All Entities" },
   { id: "parties", label: "Clients & Projects" },
-  { id: "finance", label: "Invoices & Ledger" },
+  { id: "finance", label: "Finance" },
   { id: "stock", label: "Inventory & Assets" },
   { id: "people", label: "Staff & Payroll" },
 ];

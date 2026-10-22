@@ -1,11 +1,9 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useTransition, type ReactNode } from "react";
 import { createInvoice, getNextInvoiceNumber, type InvoiceStudioData } from "@/actions/invoice-actions";
 import { VersionBadge } from "@/components/documents/version-badge";
 import { documentVersion } from "@/lib/engines/invoice-engine";
-import { toInvoiceLineDraft } from "@/lib/engines/ledger-engine";
-import { markLedgerEntriesBilled, readCompileDraft, subscribeLedgerSession } from "@/lib/ledger/session";
 import { useWorkspace } from "@/lib/workspace/store";
 import { LineItemsGrid, type InvoiceLine } from "@/components/invoices/line-items-grid";
 import { Button } from "@/components/ui/button";
@@ -82,36 +80,26 @@ function openingLine(data: InvoiceStudioData): InvoiceLine {
 export function InvoiceStudioProvider({
   data,
   initialInvoiceNumber,
-  compiled,
   children,
 }: {
   data: InvoiceStudioData;
   initialInvoiceNumber: string;
-  compiled?: {
-    projectId: string;
-    clientId: string;
-    entryIds: string[];
-    lines: InvoiceLine[];
-    transitPassNo: string;
-    ewayBillNo: string;
-  } | null;
   children: ReactNode;
 }) {
   const openingClient = data.clients[0];
   const openingProject = data.projects.find((project) => project.clientId === openingClient?.id);
-  const [clientId, setClientIdState] = useState(compiled?.clientId || openingClient?.id || "");
-  const [projectId, setProjectId] = useState(compiled?.projectId || openingProject?.id || "");
+  const [clientId, setClientIdState] = useState(openingClient?.id || "");
+  const [projectId, setProjectId] = useState(openingProject?.id || "");
   const [invoiceType, setInvoiceTypeState] = useState<"CON" | "RES">("CON");
   const [invoiceNumber, setInvoiceNumber] = useState(initialInvoiceNumber);
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [transitPassNo, setTransitPassNo] = useState(compiled?.transitPassNo ?? "");
-  const [ewayBillNo, setEwayBillNo] = useState(compiled?.ewayBillNo ?? "");
+  const [transitPassNo, setTransitPassNo] = useState("");
+  const [ewayBillNo, setEwayBillNo] = useState("");
   const [gstEnabled, setGstEnabled] = useState(true);
   const [isInterstate, setInterstate] = useState(false);
   const [terms, setTerms] = useState(data.company.defaultTerms || "Payment due within 15 days of issue.");
   const [signatureUrl, setSignatureUrl] = useState<string | null>(data.company.signatureUrl);
-  const [lines, setLines] = useState<InvoiceLine[]>(compiled?.lines.length ? compiled.lines : [openingLine(data)]);
-  const [ledgerEntryIds, setLedgerEntryIds] = useState<string[]>(compiled?.entryIds ?? []);
+  const [lines, setLines] = useState<InvoiceLine[]>([openingLine(data)]);
   const [letterheadMode, setLetterheadMode] = useState(data.company.defaultStationeryMode);
   const workspace = useWorkspace();
   const settingsStamp = [
@@ -121,25 +109,6 @@ export function InvoiceStudioProvider({
     workspace.settings.unitTypes.join("|"),
   ].join("§");
   const [seenSettings, setSeenSettings] = useState("");
-  const compileDraft = useSyncExternalStore(subscribeLedgerSession, readCompileDraft, () => null);
-  const draftKey =
-    compiled && compileDraft?.projectId === compiled.projectId
-      ? `${compileDraft.entryIds.join(",")}:${compileDraft.entries.map((entry) => entry.overrideRate).join(",")}`
-      : "";
-  const [appliedDraft, setAppliedDraft] = useState("");
-  if (draftKey && compileDraft && draftKey !== appliedDraft) {
-    setAppliedDraft(draftKey);
-    setLines(compileDraft.entries.map(toInvoiceLineDraft));
-    setLedgerEntryIds(compileDraft.entryIds);
-    setClientIdState(compileDraft.clientId);
-    setProjectId(compileDraft.projectId);
-    if (compileDraft.transitPassNo) {
-      setTransitPassNo(compileDraft.transitPassNo);
-    }
-    if (compileDraft.ewayBillNo) {
-      setEwayBillNo(compileDraft.ewayBillNo);
-    }
-  }
   if (settingsStamp !== seenSettings) {
     setSeenSettings(settingsStamp);
     setTerms(workspace.settings.defaultTerms || data.company.defaultTerms);
@@ -233,7 +202,6 @@ export function InvoiceStudioProvider({
         lines: lines
           .filter((line) => line.name.trim())
           .map((line) => ({
-            ledgerEntryId: ledgerEntryIds.includes(line.id) ? line.id : undefined,
             inventoryItemId: /^[0-9a-f-]{36}$/i.test(line.inventoryItemId)
               ? line.inventoryItemId
               : undefined,
@@ -246,10 +214,6 @@ export function InvoiceStudioProvider({
           })),
       });
       setSaveMessage(result.message);
-      const compiledIds = lines.filter((line) => ledgerEntryIds.includes(line.id)).map((line) => line.id);
-      if ((result.success || result.message.includes("DATABASE_URL")) && compiledIds.length > 0) {
-        markLedgerEntriesBilled(compiledIds);
-      }
       if (result.success) {
         setInvoiceNumber(await getNextInvoiceNumber(invoiceType, issueDate));
       }
@@ -303,18 +267,15 @@ export function InvoiceForm() {
 
   return (
     <form
-      className="no-print space-y-5 overflow-y-auto border-b border-border p-5 lg:h-[calc(100svh-3.5rem)] lg:border-r lg:border-b-0"
+      className="no-print space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
         studio.saveInvoice();
       }}
     >
-      <div>
-        <p className="text-xs tracking-wide text-muted-foreground">Document studio</p>
-        <h1 className="text-xl font-semibold">New invoice</h1>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
+      <section className="space-y-3 rounded-xl border bg-white p-4">
+        <h2 className="text-sm font-medium">Client and document</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
           <Label>Client</Label>
           <Select value={studio.clientId || undefined} onValueChange={studio.setClientId}>
@@ -389,16 +350,20 @@ export function InvoiceForm() {
             onChange={(event) => studio.setEwayBillNo(event.target.value)}
           />
         </label>
-      </div>
+        </div>
+      </section>
 
-      <LineItemsGrid
-        lines={studio.lines}
-        catalog={studio.data.inventory}
-        unitTypes={studio.data.unitTypes}
-        onChange={studio.setLines}
-      />
+      <section className="rounded-xl border bg-white p-4">
+        <LineItemsGrid
+          lines={studio.lines}
+          catalog={studio.data.inventory}
+          unitTypes={studio.data.unitTypes}
+          onChange={studio.setLines}
+        />
+      </section>
 
-      <div className="space-y-3 rounded-md border border-border bg-white p-3">
+      <section className="space-y-3 rounded-xl border bg-white p-4">
+        <h2 className="text-sm font-medium">Tax and stationery</h2>
         <div className="flex items-center justify-between gap-3">
           <Label htmlFor="gst-enabled">GST enabled</Label>
           <Switch id="gst-enabled" checked={studio.gstEnabled} onCheckedChange={studio.setGstEnabled} />
@@ -436,21 +401,24 @@ export function InvoiceForm() {
             aria-label="Digital header mode"
           />
         </div>
-      </div>
+      </section>
 
-      <label className="block space-y-1 text-sm">
-        <Label htmlFor="terms">Terms</Label>
-        <Textarea id="terms" value={studio.terms} onChange={(event) => studio.setTerms(event.target.value)} />
-      </label>
-      <label className="block space-y-1 text-sm">
-        <Label htmlFor="signature">Signature stamp</Label>
-        <Input
-          id="signature"
-          type="file"
-          accept="image/*"
-          onChange={(event) => studio.setSignatureFile(event.target.files?.[0] ?? null)}
-        />
-      </label>
+      <section className="space-y-3 rounded-xl border bg-white p-4">
+        <h2 className="text-sm font-medium">Notes and stamp</h2>
+        <label className="block space-y-1 text-sm">
+          <Label htmlFor="terms">Terms</Label>
+          <Textarea id="terms" value={studio.terms} onChange={(event) => studio.setTerms(event.target.value)} />
+        </label>
+        <label className="block space-y-1 text-sm">
+          <Label htmlFor="signature">Signature stamp</Label>
+          <Input
+            id="signature"
+            type="file"
+            accept="image/*"
+            onChange={(event) => studio.setSignatureFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
+      </section>
 
       <div className="flex items-center justify-between gap-3">
         <Button type="submit" disabled={studio.saving || studio.lines.length === 0}>

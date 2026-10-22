@@ -71,7 +71,7 @@ export function ResortDesk({ initial }: { initial: ResortDirectory }) {
         <Button variant="outline" asChild>
           <Link href="/resort-rental/invoices">
             <Calendar className="size-4" />
-            Invoice ledger
+            Invoices
           </Link>
         </Button>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSystemSettings } from "@/actions/settings-actions";
+import { PageFrame } from "@/components/shell/page-frame";
 import { SettingsDesk } from "@/components/settings/settings-desk";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -8,13 +9,13 @@ export default async function SettingsPage() {
   const settings = await getSystemSettings();
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-8">
-      <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">System</p>
-      <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
-      <p className="mt-2 mb-6 text-sm text-muted-foreground">
-        Company profile, the operating account, branding, measurement units, invoice defaults, and the personal app colour.
-      </p>
+    <PageFrame
+      eyebrow="System"
+      title="Settings"
+      description="Company profile, the operating account, branding, measurement units, invoice defaults, and the personal app colour."
+      width="narrow"
+    >
       <SettingsDesk initial={settings} />
-    </div>
+    </PageFrame>
   );
 }

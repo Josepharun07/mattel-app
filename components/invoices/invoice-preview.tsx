@@ -57,7 +57,7 @@ export function InvoicePreview({
   return (
     <article
       id="invoice-sheet"
-      className="mx-auto box-border flex h-[842px] w-[595px] shrink-0 flex-col overflow-y-auto bg-white text-[11px] text-steel shadow-md"
+      className="mx-auto box-border flex min-h-[842px] w-full max-w-[595px] shrink-0 flex-col bg-white text-[11px] text-[#111111] shadow-xl"
       style={{
         paddingTop: letterheadMode ? "28px" : "4.5cm",
         paddingRight: "28px",
@@ -66,41 +66,38 @@ export function InvoicePreview({
       }}
     >
       {letterheadMode ? (
-        <header className="border-b border-steel pb-3">
-          {company.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={company.logoUrl} alt="" className="mb-3 h-10 w-auto object-contain" />
-          ) : (
-            <div className="mb-3 flex h-10 w-10 items-center justify-center bg-steel text-[10px] font-semibold tracking-wide text-white">
-              MI
-            </div>
-          )}
-          <p className="text-sm font-semibold tracking-[0.14em]">{company.companyName.toUpperCase()}</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">{company.tagline}</p>
-          <p className="mt-2 text-[10px]">
-            {company.phone} · {company.email}
-            {company.gstin ? ` · GSTIN ${company.gstin}` : ""}
-          </p>
+        <header className="flex items-start justify-between gap-4 border-b border-neutral-300 pb-4">
+          <div>
+            {company.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={company.logoUrl} alt="" className="mb-2 h-10 w-auto object-contain" />
+            ) : (
+              <div className="mb-2 flex h-10 w-10 items-center justify-center bg-neutral-900 text-[10px] font-semibold text-white">
+                MI
+              </div>
+            )}
+            <p className="text-sm font-semibold tracking-[0.12em]">{company.companyName.toUpperCase()}</p>
+            <p className="mt-1 text-[10px] text-neutral-500">{company.tagline}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-semibold tracking-wide">INVOICE</p>
+            <p className="mt-1 flex items-center justify-end gap-2 font-mono">
+              {invoiceNumber}
+              <VersionBadge version={documentVersion(invoiceNumber)} />
+            </p>
+            <p className="mt-2">Date: {issueLabel}</p>
+          </div>
         </header>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-[10px] tracking-wide text-muted-foreground">BILLED TO</p>
-          <p className="mt-1 font-medium">{clientName || "Client"}</p>
-          {clientGstin ? <p>GSTIN {clientGstin}</p> : null}
-          <p>{clientAddress}</p>
-          <p className="mt-2">{projectName}</p>
-        </div>
-        <div className="text-right">
-          <p className="flex items-center justify-end gap-2">
-            Invoice #: {invoiceNumber}
-            <VersionBadge version={documentVersion(invoiceNumber)} />
-          </p>
-          <p>Date: {issueLabel}</p>
-          {transitPassNo ? <p>Transit pass: {transitPassNo}</p> : null}
-          {ewayBillNo ? <p>E-Way bill: {ewayBillNo}</p> : null}
-        </div>
+      <div className="mt-5">
+        <p className="text-[10px] tracking-[0.14em] text-neutral-500">RECIPIENT</p>
+        <p className="mt-1 font-medium">{clientName || "Client"}</p>
+        {clientGstin ? <p>GSTIN {clientGstin}</p> : null}
+        {clientAddress ? <p>{clientAddress}</p> : null}
+        {projectName ? <p className="mt-1">{projectName}</p> : null}
+        {transitPassNo ? <p className="mt-2">Transit pass: {transitPassNo}</p> : null}
+        {ewayBillNo ? <p>E-Way bill: {ewayBillNo}</p> : null}
       </div>
 
       <table className="mt-4 w-full border-collapse text-left">
