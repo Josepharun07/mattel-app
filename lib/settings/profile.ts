@@ -61,7 +61,6 @@ export const unitTypesSchema = z.object({
 
 export const invoiceDefaultsSchema = z.object({
   defaultTerms: z.string().trim(),
-  defaultStationeryMode: z.boolean(),
 });
 
 export const brandingSchema = z.object({

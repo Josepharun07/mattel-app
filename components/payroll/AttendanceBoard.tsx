@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,7 +168,8 @@ export function AttendanceBoard() {
       </div>
 
       <article id="payout-slip" className="rounded-xl border bg-white p-8 shadow-sm">
-        <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">Mattel Infrastructures</p>
+        <BrandLogo className="h-12 w-auto" />
+        <p className="mt-3 text-xs tracking-[0.16em] text-muted-foreground uppercase">Mattel Infrastructures</p>
         <h2 className="mt-2 text-2xl font-semibold">Weekly payout slip</h2>
         <p className="mt-1 text-sm">{worker?.name ?? "No worker"}</p>
         <table className="mt-6 w-full text-sm">

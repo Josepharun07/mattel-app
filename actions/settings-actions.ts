@@ -170,7 +170,7 @@ export async function updateInvoiceDefaults(payload: unknown) {
   try {
     return await savePatch({
       defaultTerms: parsed.data.defaultTerms,
-      defaultStationeryMode: parsed.data.defaultStationeryMode,
+      defaultStationeryMode: true,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not save the invoice defaults.";

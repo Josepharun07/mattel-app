@@ -1,7 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
+import { SignIn } from "@/components/auth/sign-in";
 import { AccentRoot } from "@/components/shell/accent-root";
 import { AppShell } from "@/components/shell/AppShell";
+import { getPortalData } from "@/actions/operations-actions";
+import { getCurrentSession } from "@/lib/auth/current";
 import { WorkspaceProvider } from "@/lib/workspace/store";
 import "./globals.css";
 
@@ -15,6 +18,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: {
     default: "Mattel Infrastructures",
@@ -22,17 +30,32 @@ export const metadata: Metadata = {
   },
   description:
     "Inventory, rentals, payroll, and billing for Mattel Infrastructures.",
+  icons: {
+    icon: "/mattel-logo.png",
+    apple: "/mattel-logo.png",
+  },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const session = await getCurrentSession();
+  const portal = session && session.kind !== "staff" ? await getPortalData() : null;
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-canvas text-steel">
-        <WorkspaceProvider>
-          <AccentRoot>
-            <AppShell>{children}</AppShell>
-          </AccentRoot>
-        </WorkspaceProvider>
+        {session ? (
+          <WorkspaceProvider>
+            <AccentRoot>
+              <AppShell session={session} portal={portal}>
+                {children}
+              </AppShell>
+            </AccentRoot>
+          </WorkspaceProvider>
+        ) : (
+          <SignIn
+            adminUsername={process.env.ADMIN_USERNAME ?? "admin@mattelinfra.com"}
+            adminPassword={process.env.ADMIN_PASSWORD ?? "admin"}
+          />
+        )}
       </body>
     </html>
   );

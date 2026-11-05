@@ -21,11 +21,11 @@ export function PageFrame({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("mx-auto flex w-full flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8", widths[width])}>
-      <header>
-        <p className="text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">{eyebrow}</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{title}</h1>
-        {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p> : null}
+    <div className={cn("mx-auto flex w-full min-w-0 max-w-full flex-col gap-6 px-4 py-6 sm:px-6", widths[width])}>
+      <header className="min-w-0 space-y-1">
+        <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+        {description ? <p className="max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
       </header>
       {children}
     </div>

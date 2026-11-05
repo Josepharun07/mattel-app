@@ -208,7 +208,7 @@ export function saveStaffMember(directory: StaffDirectory, draft: StaffDraft, id
   }
   const existing = id ? directory.staff.find((person) => person.id === id && !person.deletedAt) : undefined;
   const record: StaffRecord = {
-    id: existing?.id ?? id ?? `staff-${crypto.randomUUID()}`,
+    id: existing?.id ?? id ?? crypto.randomUUID(),
     ...checked.value,
     roleIds: existing?.roleIds ?? [],
     deletedAt: null,
@@ -252,7 +252,7 @@ export function createJobRole(directory: StaffDirectory, name: string, actor: Ac
   if (directory.roles.some((role) => role.name.toLowerCase() === label.toLowerCase())) {
     return { ok: false as const, message: "That role already exists." };
   }
-  const role: JobRole = { id: `role-${crypto.randomUUID()}`, name: label, builtIn: false };
+  const role: JobRole = { id: crypto.randomUUID(), name: label, builtIn: false };
   return { ok: true as const, directory: { ...directory, roles: [...directory.roles, role] }, role };
 }
 

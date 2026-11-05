@@ -53,6 +53,7 @@ function refreshWorkspace() {
   revalidatePath("/assets");
   revalidatePath("/payroll");
   revalidatePath("/settings/recycle-bin");
+  revalidatePath("/projects");
 }
 
 const clientInput = z.object({
@@ -192,6 +193,15 @@ export async function createProject(input: z.infer<typeof projectInput>): Promis
   return { success: true, message: "Project saved.", data: created };
 }
 
+export async function setProjectStatus(id: string, status: "ACTIVE" | "COMPLETED") {
+  if (!process.env.DATABASE_URL) {
+    return unavailable();
+  }
+  await db.update(projects).set({ status }).where(eq(projects.id, id));
+  refreshWorkspace();
+  return { success: true as const, message: status === "COMPLETED" ? "Project marked finished." : "Project marked running." };
+}
+
 export async function softDeleteProject(id: string) {
   if (!process.env.DATABASE_URL) {
     return unavailable();
@@ -247,7 +257,7 @@ export async function createInvoice(input: z.infer<typeof invoiceInput>): Promis
     gstEnabled: parsed.data.gstEnabled,
     isInterstate: parsed.data.isInterstate,
   });
-  const letterheadMode = parsed.data.letterheadMode ?? true;
+  const letterheadMode = true;
 
   const [created] = await db
     .insert(invoices)

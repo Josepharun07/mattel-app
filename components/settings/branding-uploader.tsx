@@ -2,6 +2,7 @@
 
 import { useState, type DragEvent, type ReactNode } from "react";
 import { FileSignature, Upload } from "lucide-react";
+import { brandLogoSrc } from "@/components/brand/logo";
 import { createBrandingUploadUrl, updateBrandingAssets } from "@/actions/settings-actions";
 
 function readDataUrl(file: File) {
@@ -84,7 +85,7 @@ export function BrandingUploader({
         title="Company logo"
         hint="PNG, JPEG, WEBP, or SVG"
         accept="image/png,image/jpeg,image/webp,image/svg+xml"
-        preview={logoUrl}
+        preview={logoUrl || brandLogoSrc}
         light={false}
         busy={busy === "logos"}
         icon={<Upload className="size-4" />}

@@ -7,6 +7,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -295,6 +296,20 @@ export const staff = pgTable("staff", {
   role: text("role").notNull(),
   hourlyRate: numeric("hourly_rate", money).notNull(),
   dailyBaseRate: numeric("daily_base_rate", money).notNull(),
+  address: text("address").notNull().default(""),
+  email: text("email").notNull().default(""),
+  panNumber: text("pan_number").notNull().default(""),
+  aadhaarNumber: text("aadhaar_number").notNull().default(""),
+  upiId: text("upi_id").notNull().default(""),
+  bankName: text("bank_name").notNull().default(""),
+  accountNumber: text("account_number").notNull().default(""),
+  ifscCode: text("ifsc_code").notNull().default(""),
+  emergencyName: text("emergency_name").notNull().default(""),
+  emergencyPhone: text("emergency_phone").notNull().default(""),
+  emergencyRelation: text("emergency_relation").notNull().default(""),
+  joiningDate: date("joining_date"),
+  bloodGroup: text("blood_group").notNull().default(""),
+  notes: text("notes").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
@@ -434,6 +449,242 @@ export const resortLeases = pgTable("resort_leases", {
   status: resortLeaseStatus("status").notNull().default("ACTIVE"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const appUsers = pgTable("app_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  kind: text("kind").notNull(),
+  displayName: text("display_name").notNull(),
+  accessRole: text("access_role"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const appSessions = pgTable("app_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tokenHash: text("token_hash").notNull().unique(),
+  userId: uuid("user_id")
+    .references(() => appUsers.id, { onDelete: "cascade" })
+    .notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+export const jobRoles = pgTable("job_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  builtIn: boolean("built_in").notNull().default(false),
+});
+
+export const staffPhones = pgTable("staff_phones", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id")
+    .references(() => staff.id, { onDelete: "cascade" })
+    .notNull(),
+  label: text("label").notNull().default(""),
+  phoneNumber: text("phone_number").notNull(),
+});
+
+export const staffRoleAssignments = pgTable(
+  "staff_role_assignments",
+  {
+    staffId: uuid("staff_id")
+      .references(() => staff.id, { onDelete: "cascade" })
+      .notNull(),
+    roleId: uuid("role_id")
+      .references(() => jobRoles.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.staffId, table.roleId] })],
+);
+
+export const siteDiary = pgTable("site_diary", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entryDate: date("entry_date").notNull(),
+  projectName: text("project_name").notNull(),
+  weather: text("weather").notNull().default(""),
+  workDone: text("work_done").notNull(),
+  quantity: numeric("quantity", money).notNull().default("0"),
+  unit: text("unit").notNull().default(""),
+  labourCount: integer("labour_count").notNull().default(0),
+  skilledCount: integer("skilled_count").notNull().default(0),
+  hindrance: text("hindrance").notNull().default(""),
+  instructions: text("instructions").notNull().default(""),
+  photoName: text("photo_name").notNull().default(""),
+  photoDataUrl: text("photo_data_url").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const boqItems = pgTable("boq_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  section: text("section").notNull().default("Civil"),
+  costCode: text("cost_code").notNull(),
+  description: text("description").notNull(),
+  unit: text("unit").notNull(),
+  contractQty: numeric("contract_qty", money).notNull(),
+  rate: numeric("rate", money).notNull(),
+  executedQty: numeric("executed_qty", money).notNull().default("0"),
+});
+
+export const raBills = pgTable("ra_bills", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  billNumber: text("bill_number").notNull().unique(),
+  boqId: uuid("boq_id")
+    .references(() => boqItems.id, { onDelete: "cascade" })
+    .notNull(),
+  quantity: numeric("quantity", money).notNull(),
+  subtotal: numeric("subtotal", money).notNull(),
+  cgst: numeric("cgst", money).notNull(),
+  sgst: numeric("sgst", money).notNull(),
+  igst: numeric("igst", money).notNull(),
+  total: numeric("total", money).notNull(),
+  retentionPercent: numeric("retention_percent", money).notNull().default("5"),
+  retentionAmount: numeric("retention_amount", money).notNull().default("0"),
+  netPayable: numeric("net_payable", money).notNull().default("0"),
+  issuedOn: date("issued_on").notNull(),
+});
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  number: text("number").notNull().unique(),
+  vendorName: text("vendor_name").notNull(),
+  itemName: text("item_name").notNull(),
+  unit: text("unit").notNull().default(""),
+  quantity: numeric("quantity", money).notNull(),
+  rate: numeric("rate", money).notNull(),
+  issuedOn: date("issued_on").notNull(),
+  expectedOn: date("expected_on"),
+});
+
+export const goodsReceipts = pgTable("goods_receipts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id")
+    .references(() => purchaseOrders.id, { onDelete: "cascade" })
+    .notNull(),
+  quantity: numeric("quantity", money).notNull(),
+  rejectedQuantity: numeric("rejected_quantity", money).notNull().default("0"),
+  receivedOn: date("received_on").notNull(),
+});
+
+export const materialIssues = pgTable("material_issues", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  itemName: text("item_name").notNull(),
+  projectName: text("project_name").notNull(),
+  costCode: text("cost_code").notNull().default(""),
+  quantity: numeric("quantity", money).notNull(),
+  issuedOn: date("issued_on").notNull(),
+});
+
+export const equipmentLogs = pgTable("equipment_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  machineName: text("machine_name").notNull(),
+  ownership: text("ownership").notNull().default("HIRED"),
+  operatorName: text("operator_name").notNull().default(""),
+  siteName: text("site_name").notNull().default(""),
+  logDate: date("log_date").notNull(),
+  openingReading: numeric("opening_reading", money).notNull().default("0"),
+  closingReading: numeric("closing_reading", money).notNull().default("0"),
+  runHours: numeric("run_hours", money).notNull(),
+  idleHours: numeric("idle_hours", money).notNull(),
+  fuelLitres: numeric("fuel_litres", money).notNull(),
+  hireRate: numeric("hire_rate", money).notNull(),
+  breakdown: text("breakdown").notNull().default(""),
+});
+
+export const budgetLines = pgTable("budget_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  costCode: text("cost_code").notNull(),
+  name: text("name").notNull(),
+  budgetAmount: numeric("budget_amount", money).notNull(),
+  committedAmount: numeric("committed_amount", money).notNull().default("0"),
+  actualAmount: numeric("actual_amount", money).notNull(),
+});
+
+export const drawings = pgTable("drawings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  number: text("number").notNull(),
+  title: text("title").notNull(),
+  discipline: text("discipline").notNull().default(""),
+  revision: text("revision").notNull(),
+  revisedOn: date("revised_on").notNull(),
+  status: text("status").notNull().default("CURRENT"),
+  remarks: text("remarks").notNull().default(""),
+});
+
+export const rfis = pgTable("rfis", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  number: text("number").notNull().unique(),
+  discipline: text("discipline").notNull().default(""),
+  askedBy: text("asked_by").notNull().default(""),
+  dueDate: date("due_date"),
+  question: text("question").notNull(),
+  answer: text("answer").notNull().default(""),
+  status: text("status").notNull(),
+});
+
+export const submittals = pgTable("submittals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  specSection: text("spec_section").notNull().default(""),
+  submittalType: text("submittal_type").notNull().default("SAMPLE"),
+  reviewer: text("reviewer").notNull().default(""),
+  status: text("status").notNull(),
+});
+
+export const toolboxTalks = pgTable("toolbox_talks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  talkDate: date("talk_date").notNull(),
+  topic: text("topic").notNull(),
+  durationMinutes: integer("duration_minutes").notNull().default(15),
+  attendees: text("attendees").notNull().default(""),
+  hazards: text("hazards").notNull().default(""),
+});
+
+export const incidentReports = pgTable("incident_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  incidentDate: date("incident_date").notNull(),
+  category: text("category").notNull().default("NEAR_MISS"),
+  description: text("description").notNull(),
+  people: text("people").notNull().default(""),
+  severity: text("severity").notNull(),
+  lostHours: numeric("lost_hours", money).notNull().default("0"),
+  immediateAction: text("immediate_action").notNull().default(""),
+  status: text("status").notNull().default("OPEN"),
+});
+
+export const leaveRequests = pgTable("leave_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffName: text("staff_name").notNull(),
+  leaveType: text("leave_type").notNull().default("CASUAL"),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  days: numeric("days", money).notNull().default("1"),
+  reason: text("reason").notNull().default(""),
+  status: text("status").notNull(),
+});
+
+export const wageDeductions = pgTable("wage_deductions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffName: text("staff_name").notNull(),
+  period: text("period").notNull(),
+  gross: numeric("gross", money).notNull(),
+  pf: numeric("pf", money).notNull(),
+  esi: numeric("esi", money).notNull(),
+  employerPf: numeric("employer_pf", money).notNull().default("0"),
+  employerEsi: numeric("employer_esi", money).notNull().default("0"),
+  tds: numeric("tds", money).notNull(),
+  net: numeric("net", money).notNull(),
+  costToCompany: numeric("cost_to_company", money).notNull().default("0"),
+});
+
+export const paymentRequests = pgTable("payment_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  payee: text("payee").notNull(),
+  amount: numeric("amount", money).notNull(),
+  purpose: text("purpose").notNull(),
+  costCode: text("cost_code").notNull().default(""),
+  requestedBy: text("requested_by").notNull().default(""),
+  status: text("status").notNull(),
 });
 
 export const auditLogs = pgTable("audit_logs", {

@@ -2,8 +2,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { hashPassword } from "../lib/auth/passwords";
+import { ensureSuperAdmin } from "../lib/auth/ensure-admin";
 import { calculateInvoiceTotals } from "../lib/engines/invoice-engine";
 import { calculateStaffPayroll } from "../lib/engines/payroll-engine";
+import { seedRoles } from "../lib/staff/directory";
 import * as schema from "./schema";
 
 loadEnvFile();
@@ -13,23 +16,24 @@ const databaseUrl =
   "postgresql://postgres:postgres@localhost:5432/mattel_infrastructures";
 
 function loadEnvFile() {
-  if (!existsSync(".env")) {
-    return;
-  }
-
-  for (const line of readFileSync(".env", "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
+  for (const file of [".env", ".env.local"]) {
+    if (!existsSync(file)) {
       continue;
     }
-    const separator = trimmed.indexOf("=");
-    if (separator === -1) {
-      continue;
-    }
-    const key = trimmed.slice(0, separator).trim();
-    const value = trimmed.slice(separator + 1).trim().replace(/^["']|["']$/g, "");
-    if (!process.env[key]) {
-      process.env[key] = value;
+    for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) {
+        continue;
+      }
+      const separator = trimmed.indexOf("=");
+      if (separator === -1) {
+        continue;
+      }
+      const key = trimmed.slice(0, separator).trim();
+      const value = trimmed.slice(separator + 1).trim().replace(/^["']|["']$/g, "");
+      if (!process.env[key]) {
+        process.env[key] = value;
+      }
     }
   }
 }
@@ -38,17 +42,76 @@ function money(amount: number) {
   return amount.toFixed(2);
 }
 
+async function seedAccounts(database: ReturnType<typeof drizzle<typeof schema>>) {
+  const [existingUser] = await database.select({ id: schema.appUsers.id }).from(schema.appUsers).limit(1);
+  if (!existingUser) {
+  const accounts = [
+    ["operator", "operator", "staff", "Site operator", "OPERATOR"],
+    ["manager", "manager", "staff", "Site manager", "MANAGER"],
+    ["owner", "owner", "staff", "Owner", "OWNER"],
+    ["vendor", "vendor", "vendor", "ABC Supplies", null],
+    ["client", "client", "client", "ABC Constructions", null],
+  ] as const;
+  await database.insert(schema.appUsers).values(
+    accounts.map((account) => ({
+      username: account[0],
+      passwordHash: hashPassword(account[1]),
+      kind: account[2],
+      displayName: account[3],
+      accessRole: account[4],
+    })),
+  );
+  await database.insert(schema.jobRoles).values(seedRoles().map((role) => ({ name: role.name, builtIn: true })));
+  const [boq] = await database
+    .insert(schema.boqItems)
+    .values({ costCode: "CIV-MASN", description: "Block masonry", unit: "sqm", contractQty: "100.00", rate: "450.00", executedQty: "40.00" })
+    .returning();
+  const [order] = await database
+    .insert(schema.purchaseOrders)
+    .values({ number: "MI/PO/2026/0001", vendorName: "ABC Supplies", itemName: "Cement", quantity: "50.00", rate: "420.00", issuedOn: "2026-10-20" })
+    .returning();
+  await database.insert(schema.goodsReceipts).values({ orderId: order.id, quantity: "20.00", receivedOn: "2026-10-21" });
+  await database.insert(schema.siteDiary).values({
+    entryDate: "2026-10-22",
+    projectName: "Compound Wall & Yard Fill",
+    weather: "Clear",
+    workDone: "Blockwork on the east wall",
+    quantity: "12.00",
+    unit: "sqm",
+  });
+  await database.insert(schema.budgetLines).values({ costCode: "CIV-MASN", name: "Block masonry", budgetAmount: "45000.00", actualAmount: "18000.00" });
+  await database.insert(schema.drawings).values({ number: "A-101", title: "Compound wall plan", revision: "A", revisedOn: "2026-10-01" });
+  await database.insert(schema.rfis).values({ number: "MI/RFI/2026/0001", question: "Confirm the wall height at the gate.", status: "OPEN" });
+  await database.insert(schema.submittals).values({ title: "Block sample", specSection: "04 20 00", status: "DRAFT" });
+  await database.insert(schema.leaveRequests).values({ staffName: "Rajesh Kumar", startDate: "2026-10-28", endDate: "2026-10-28", reason: "Personal", status: "PENDING" });
+  await database.insert(schema.paymentRequests).values({ payee: "ABC Supplies", amount: "8400.00", purpose: "Cement received against MI/PO/2026/0001", status: "PENDING" });
+  const [supervisor] = await database.select().from(schema.jobRoles).where(eq(schema.jobRoles.name, "Supervisor")).limit(1);
+  const [driver] = await database.select().from(schema.jobRoles).where(eq(schema.jobRoles.name, "Heavy vehicle driver")).limit(1);
+  const people = await database.select().from(schema.staff);
+  for (const person of people) {
+    const role = person.fullName.includes("Rajesh") ? supervisor : driver;
+    if (role) {
+      await database.insert(schema.staffRoleAssignments).values({ staffId: person.id, roleId: role.id });
+      await database.update(schema.staff).set({ role: role.name, address: person.fullName.includes("Rajesh") ? "Kaloor, Kochi" : "" }).where(eq(schema.staff.id, person.id));
+    }
+  }
+  void boq;
+  }
+  await ensureSuperAdmin(database);
+}
+
 async function seed() {
   const client = postgres(databaseUrl, { max: 1, prepare: false });
   const db = drizzle(client, { schema });
 
   try {
+    await seedAccounts(db);
     const existing = await db
       .select({ id: schema.systemSettings.id })
       .from(schema.systemSettings)
       .limit(1);
     if (existing.length > 0) {
-      console.log("Database already has system settings. Seed skipped.");
+      console.log("Database already has system settings. Account records were checked.");
       return;
     }
 

@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, CreditCard, FileSignature, Palette, Settings, Sliders } from "lucide-react";
+import { Building2, CreditCard, Database, FileSignature, LogOut, Palette, Settings, Sliders } from "lucide-react";
+import { signOutAction } from "@/actions/auth-actions";
+import type { DatabaseStatus } from "@/actions/database-actions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { AppearancePanel } from "@/components/settings/appearance-panel";
+import { DatabasePanel } from "@/components/settings/database-panel";
 import { BankDetailsForm } from "@/components/settings/bank-details-form";
 import { BrandingUploader } from "@/components/settings/branding-uploader";
 import { CompanyProfileForm } from "@/components/settings/company-profile-form";
@@ -18,11 +23,12 @@ const tabs = [
   { id: "units", label: "Measurement Units", icon: Sliders },
   { id: "defaults", label: "Invoice Defaults", icon: Settings },
   { id: "appearance", label: "App Settings", icon: Palette },
+  { id: "database", label: "Database", icon: Database },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
 
-export function SettingsDesk({ initial }: { initial: SystemSettingsView }) {
+export function SettingsDesk({ initial, database }: { initial: SystemSettingsView; database: DatabaseStatus }) {
   const workspace = useWorkspace();
   const [tab, setTab] = useState<TabId>("profile");
   const [settings, setSettings] = useState(initial);
@@ -57,21 +63,23 @@ export function SettingsDesk({ initial }: { initial: SystemSettingsView }) {
           const Icon = item.icon;
           const active = tab === item.id;
           return (
-            <button
+            <Button
               key={item.id}
               type="button"
-              className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm ${active ? "text-white" : "bg-white"}`}
-              style={active ? { backgroundColor: "var(--app-accent)" } : undefined}
+              variant={active ? "default" : "outline"}
+              size="sm"
+              className="shrink-0"
               onClick={() => setTab(item.id)}
             >
               <Icon className="size-4" />
               {item.label}
-            </button>
+            </Button>
           );
         })}
       </div>
 
-      <section className="rounded-xl border bg-white p-4">
+      <Card>
+        <CardContent className="pt-4">
         {tab === "profile" ? (
           <CompanyProfileForm
             key={settings.companyName + settings.email}
@@ -104,11 +112,33 @@ export function SettingsDesk({ initial }: { initial: SystemSettingsView }) {
           />
         ) : null}
         {tab === "appearance" ? <AppearancePanel /> : null}
-      </section>
+        {tab === "database" ? <DatabasePanel initial={database} /> : null}
+        </CardContent>
+      </Card>
 
       {initial.offline ? (
         <p className="text-sm text-muted-foreground">PostgreSQL is not connected. Changes stay in this browser.</p>
       ) : null}
+
+      <Card>
+        <CardContent className="flex items-center justify-between gap-3 pt-4">
+          <div>
+            <p className="text-sm font-medium">Sign out</p>
+            <p className="text-xs text-muted-foreground">End this session on this browser.</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void signOutAction().then(() => window.location.assign("/"));
+            }}
+          >
+            <LogOut />
+            Sign out
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

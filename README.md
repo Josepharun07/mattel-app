@@ -1,6 +1,6 @@
 # Mattel Infrastructures
 
-Operations platform for construction ledgers, inventory, asset rentals, weekly wages, subcontracts, and resort billing.
+Operations platform for construction ledgers, inventory, asset rentals, weekly wages, subcontracts, and resort billing. The interface uses the Apple system type stack at 13px, a light gray canvas, and a compact navigation rail.
 
 The specification lives in:
 

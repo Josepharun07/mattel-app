@@ -317,8 +317,8 @@ export async function createInvoice(payload: CreateInvoicePayload) {
           grandTotal: money(totals.total),
           transitPassNo: parsed.data.transitPassNo,
           ewayBillNo: parsed.data.ewayBillNo,
-          letterheadMode: parsed.data.letterheadMode,
-          stationeryMode: !parsed.data.letterheadMode,
+          letterheadMode: true,
+          stationeryMode: false,
           notes: parsed.data.terms,
         })
         .returning({ id: invoices.id });
@@ -451,8 +451,8 @@ export async function updateFinalizedInvoice(invoiceId: string, updatedPayload: 
           grandTotal: money(totals.total),
           transitPassNo: parsed.data.transitPassNo,
           ewayBillNo: parsed.data.ewayBillNo,
-          letterheadMode: parsed.data.letterheadMode,
-          stationeryMode: !parsed.data.letterheadMode,
+          letterheadMode: true,
+          stationeryMode: false,
           notes: parsed.data.terms,
         })
         .where(eq(invoices.id, existing.id));

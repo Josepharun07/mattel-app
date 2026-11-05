@@ -11,7 +11,7 @@ const accounts: Account[] = [
   { kind: "staff", username: "operator", password: "operator", name: "Site operator", role: "OPERATOR", userId: "user-operator" },
   { kind: "staff", username: "manager", password: "manager", name: "Site manager", role: "MANAGER", userId: "user-manager" },
   { kind: "staff", username: "owner", password: "owner", name: "Owner", role: "OWNER", userId: "user-owner" },
-  { kind: "staff", username: "admin", password: "admin", name: "Super admin", role: "SUPER_ADMIN", userId: "user-super" },
+  { kind: "staff", username: "admin@mattelinfra.com", password: "admin", name: "Super admin", role: "SUPER_ADMIN", userId: "user-super" },
   { kind: "vendor", username: "vendor", password: "vendor", name: "ABC Supplies" },
   { kind: "client", username: "client", password: "client", name: "ABC Constructions" },
 ];
@@ -27,6 +27,11 @@ export function signInLocal(username: string, password: string) {
   if (!account) {
     return { ok: false as const, message: "Those details do not match a local account." };
   }
-  const { password: _password, ...session } = account;
-  return { ok: true as const, session };
+  if (account.kind === "staff") {
+    return {
+      ok: true as const,
+      session: { kind: "staff" as const, username: account.username, name: account.name, role: account.role, userId: account.userId },
+    };
+  }
+  return { ok: true as const, session: { kind: account.kind, username: account.username, name: account.name } };
 }

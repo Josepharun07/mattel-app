@@ -1,6 +1,7 @@
 "use client";
 
 import type { InvoiceCompanyProfile } from "@/actions/invoice-actions";
+import { BrandLogo } from "@/components/brand/logo";
 import { VersionBadge } from "@/components/documents/version-badge";
 import { calculateInvoiceTotals, documentVersion } from "@/lib/engines/invoice-engine";
 import { formatInr } from "@/lib/money";
@@ -20,7 +21,6 @@ export function InvoicePreview({
   lines,
   gstEnabled,
   isInterstate,
-  letterheadMode,
   terms,
   signatureUrl,
 }: {
@@ -36,7 +36,6 @@ export function InvoicePreview({
   lines: InvoiceLine[];
   gstEnabled: boolean;
   isInterstate: boolean;
-  letterheadMode: boolean;
   terms: string;
   signatureUrl: string | null;
 }) {
@@ -57,24 +56,28 @@ export function InvoicePreview({
   return (
     <article
       id="invoice-sheet"
-      className="mx-auto box-border flex min-h-[842px] w-full max-w-[595px] shrink-0 flex-col bg-white text-[11px] text-[#111111] shadow-xl"
+      className="relative mx-auto box-border flex w-full max-w-full min-h-0 flex-col bg-white text-[11px] text-[#111111] shadow-xl"
       style={{
-        paddingTop: letterheadMode ? "28px" : "4.5cm",
+        paddingTop: "28px",
         paddingRight: "28px",
         paddingBottom: "28px",
         paddingLeft: "28px",
       }}
     >
-      {letterheadMode ? (
-        <header className="flex items-start justify-between gap-4 border-b border-neutral-300 pb-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/mattel-watermark.png"
+        alt=""
+        aria-hidden
+        className="invoice-watermark pointer-events-none absolute top-1/2 left-1/2 z-0 w-[52%] max-w-[280px] -translate-x-1/2 -translate-y-1/2 object-contain opacity-25"
+      />
+      <header className="relative z-10 flex items-start justify-between gap-4 border-b border-neutral-300 pb-4">
           <div>
             {company.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={company.logoUrl} alt="" className="mb-2 h-10 w-auto object-contain" />
+              <img src={company.logoUrl} alt="" className="mb-2 h-14 w-auto object-contain" />
             ) : (
-              <div className="mb-2 flex h-10 w-10 items-center justify-center bg-neutral-900 text-[10px] font-semibold text-white">
-                MI
-              </div>
+              <BrandLogo className="mb-2 h-14 w-auto" alt="" />
             )}
             <p className="text-sm font-semibold tracking-[0.12em]">{company.companyName.toUpperCase()}</p>
             <p className="mt-1 text-[10px] text-neutral-500">{company.tagline}</p>
@@ -88,9 +91,8 @@ export function InvoicePreview({
             <p className="mt-2">Date: {issueLabel}</p>
           </div>
         </header>
-      ) : null}
 
-      <div className="mt-5">
+      <div className="relative z-10 mt-5">
         <p className="text-[10px] tracking-[0.14em] text-neutral-500">RECIPIENT</p>
         <p className="mt-1 font-medium">{clientName || "Client"}</p>
         {clientGstin ? <p>GSTIN {clientGstin}</p> : null}
@@ -100,7 +102,7 @@ export function InvoicePreview({
         {ewayBillNo ? <p>E-Way bill: {ewayBillNo}</p> : null}
       </div>
 
-      <table className="mt-4 w-full border-collapse text-left">
+      <table className="relative z-10 mt-4 w-full border-collapse text-left">
         <thead>
           <tr className="border-b border-steel">
             <th className="py-1 font-medium">Item</th>
@@ -127,32 +129,38 @@ export function InvoicePreview({
         </tbody>
       </table>
 
-      <dl className="mt-4 ml-auto w-48 space-y-1">
+      <dl className="relative z-10 mt-4 ml-auto w-48 space-y-1">
         <div className="flex justify-between gap-4">
           <dt>Subtotal</dt>
           <dd className="font-mono">{formatInr(totals.subtotal)}</dd>
         </div>
-        <div className="flex justify-between gap-4">
-          <dt>CGST (9%)</dt>
-          <dd className="font-mono">{formatInr(totals.cgst)}</dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt>SGST (9%)</dt>
-          <dd className="font-mono">{formatInr(totals.sgst)}</dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt>IGST (18%)</dt>
-          <dd className="font-mono">{formatInr(totals.igst)}</dd>
-        </div>
+        {gstEnabled && !isInterstate ? (
+          <>
+            <div className="flex justify-between gap-4">
+              <dt>CGST (9%)</dt>
+              <dd className="font-mono">{formatInr(totals.cgst)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt>SGST (9%)</dt>
+              <dd className="font-mono">{formatInr(totals.sgst)}</dd>
+            </div>
+          </>
+        ) : null}
+        {gstEnabled && isInterstate ? (
+          <div className="flex justify-between gap-4">
+            <dt>IGST (18%)</dt>
+            <dd className="font-mono">{formatInr(totals.igst)}</dd>
+          </div>
+        ) : null}
         <div className="flex justify-between gap-4 border-t border-steel pt-1 font-semibold">
           <dt>Grand total</dt>
           <dd className="font-mono">{formatInr(totals.total)}</dd>
         </div>
       </dl>
 
-      {terms ? <p className="mt-4 text-[10px]">{terms}</p> : null}
+      {terms ? <p className="relative z-10 mt-4 text-[10px]">{terms}</p> : null}
 
-      <p className="mt-4 text-[10px]">
+      <p className="relative z-10 mt-4 text-[10px]">
         <span className="font-medium">{company.accountName}</span>
         <span className="mt-1 block text-muted-foreground">
           {[company.bankName, company.accountNumber ? `A/c ${company.accountNumber}` : "", company.ifscCode ? `IFSC ${company.ifscCode}` : "", company.upiId ? `UPI ${company.upiId}` : ""]
@@ -161,8 +169,7 @@ export function InvoicePreview({
         </span>
       </p>
 
-      {letterheadMode ? (
-        <footer className="mt-auto pt-6">
+      <footer className="relative z-10 mt-auto pt-6">
           {signatureUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={signatureUrl} alt="Signature stamp" className="mb-2 h-12 w-auto bg-slate-100 object-contain p-1" />
@@ -174,12 +181,6 @@ export function InvoicePreview({
             {company.companyName} · {company.address} · {company.phone} · {company.email}
           </p>
         </footer>
-      ) : (
-        <div className="mt-8">
-          <div className="h-10 w-28 border-b border-steel" />
-          <p className="mt-1">Authorised Signatory</p>
-        </div>
-      )}
     </article>
   );
 }
@@ -201,7 +202,6 @@ export function ConnectedPreview() {
       lines={studio.lines}
       gstEnabled={studio.gstEnabled}
       isInterstate={studio.isInterstate}
-      letterheadMode={studio.letterheadMode}
       terms={studio.terms}
       signatureUrl={studio.signatureUrl}
     />

@@ -13,7 +13,7 @@
   --color-success: #059669;
   --color-warning: #dc2626;
   --color-steel: #0f172a;
-  --color-canvas: #f4f7fb;
+  --color-canvas: #f5f5f7;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -55,7 +55,7 @@
 :root {
   --app-accent: #334155;
   --radius: 0.625rem;
-  --background: #f4f7fb;
+  --background: #f5f5f7;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
@@ -123,6 +123,11 @@
 }
 
 @layer base {
+  html {
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", var(--font-inter), sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -130,6 +135,30 @@
     @apply bg-background text-foreground;
     background-color: var(--background);
     color: var(--foreground);
+    letter-spacing: -0.011em;
+    overflow-x: clip;
+  }
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  td,
+  th,
+  label {
+    overflow-wrap: break-word;
+  }
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+    font-size: 0.875rem;
   }
 }
 
@@ -150,8 +179,14 @@
 
   #invoice-sheet {
     width: 210mm !important;
+    max-width: none !important;
     height: auto !important;
     min-height: 297mm;
     overflow: visible !important;
+  }
+
+  #invoice-sheet .invoice-watermark {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

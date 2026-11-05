@@ -15,12 +15,17 @@ export type DiaryEntry = {
   workDone: string;
   quantity: number;
   unit: string;
+  labourCount: number;
+  skilledCount: number;
+  hindrance: string;
+  instructions: string;
   photoName: string;
   photoDataUrl: string;
 };
 
 export type BoqLine = {
   id: string;
+  section: string;
   costCode: string;
   description: string;
   unit: string;
@@ -39,6 +44,9 @@ export type RaBill = {
   sgst: number;
   igst: number;
   total: number;
+  retentionPercent: number;
+  retentionAmount: number;
+  netPayable: number;
   issuedOn: string;
 };
 
@@ -47,15 +55,18 @@ export type PurchaseOrder = {
   number: string;
   vendorName: string;
   itemName: string;
+  unit: string;
   quantity: number;
   rate: number;
   issuedOn: string;
+  expectedOn: string;
 };
 
 export type GoodsReceipt = {
   id: string;
   orderId: string;
   quantity: number;
+  rejectedQuantity: number;
   receivedOn: string;
 };
 
@@ -63,6 +74,7 @@ export type MaterialIssue = {
   id: string;
   itemName: string;
   projectName: string;
+  costCode: string;
   quantity: number;
   issuedOn: string;
 };
@@ -70,7 +82,12 @@ export type MaterialIssue = {
 export type EquipmentLog = {
   id: string;
   machineName: string;
+  ownership: "OWNED" | "HIRED";
+  operatorName: string;
+  siteName: string;
   logDate: string;
+  openingReading: number;
+  closingReading: number;
   runHours: number;
   idleHours: number;
   fuelLitres: number;
@@ -83,6 +100,7 @@ export type BudgetLine = {
   costCode: string;
   name: string;
   budgetAmount: number;
+  committedAmount: number;
   actualAmount: number;
 };
 
@@ -90,13 +108,19 @@ export type Drawing = {
   id: string;
   number: string;
   title: string;
+  discipline: string;
   revision: string;
   revisedOn: string;
+  status: "CURRENT" | "SUPERSEDED";
+  remarks: string;
 };
 
 export type Rfi = {
   id: string;
   number: string;
+  discipline: string;
+  askedBy: string;
+  dueDate: string;
   question: string;
   answer: string;
   status: "OPEN" | "ANSWERED";
@@ -106,6 +130,8 @@ export type Submittal = {
   id: string;
   title: string;
   specSection: string;
+  submittalType: string;
+  reviewer: string;
   status: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
 };
 
@@ -113,22 +139,30 @@ export type ToolboxTalk = {
   id: string;
   talkDate: string;
   topic: string;
+  durationMinutes: number;
   attendees: string;
+  hazards: string;
 };
 
 export type IncidentReport = {
   id: string;
   incidentDate: string;
+  category: string;
   description: string;
   people: string;
   severity: "LOW" | "MEDIUM" | "HIGH";
+  lostHours: number;
+  immediateAction: string;
+  status: "OPEN" | "CLOSED";
 };
 
 export type LeaveRequest = {
   id: string;
   staffName: string;
+  leaveType: "CASUAL" | "SICK" | "EARNED";
   startDate: string;
   endDate: string;
+  days: number;
   reason: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
 };
@@ -140,8 +174,11 @@ export type WageDeduction = {
   gross: number;
   pf: number;
   esi: number;
+  employerPf: number;
+  employerEsi: number;
   tds: number;
   net: number;
+  costToCompany: number;
 };
 
 export type PaymentRequest = {
@@ -149,6 +186,8 @@ export type PaymentRequest = {
   payee: string;
   amount: number;
   purpose: string;
+  costCode: string;
+  requestedBy: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
 };
 
@@ -171,8 +210,8 @@ export type SiteBook = {
   payments: PaymentRequest[];
 };
 
-function nid(prefix: string) {
-  return `${prefix}-${crypto.randomUUID()}`;
+function nid(_prefix: string) {
+  return crypto.randomUUID();
 }
 
 function nextNumber(existing: string[], prefix: string, year: number) {
@@ -225,14 +264,25 @@ export function budgetVariance(line: BudgetLine) {
   return roundMoney(line.budgetAmount - line.actualAmount);
 }
 
+export function orderStatus(book: SiteBook, order: PurchaseOrder) {
+  const received = receivedQty(book, order.id);
+  if (received <= 0) return "OPEN";
+  if (received < order.quantity) return "PARTIAL";
+  return "RECEIVED";
+}
+
 export function wageDeductions(gross: number, tdsPercent: number) {
   if (!Number.isFinite(gross) || gross < 0 || !Number.isFinite(tdsPercent) || tdsPercent < 0) {
     return { ok: false as const, message: "Gross pay and the TDS percent must be zero or more." };
   }
   const pf = roundMoney(gross * 0.12);
-  const esi = gross > 0 && gross <= 21000 ? roundMoney(gross * 0.0075) : 0;
+  const employerPf = pf;
+  const covered = gross > 0 && gross <= 21000;
+  const esi = covered ? roundMoney(gross * 0.0075) : 0;
+  const employerEsi = covered ? roundMoney(gross * 0.0325) : 0;
   const tds = roundMoney(gross * (tdsPercent / 100));
-  return { ok: true as const, pf, esi, tds, net: roundMoney(gross - pf - esi - tds) };
+  const net = roundMoney(gross - pf - esi - tds);
+  return { ok: true as const, pf, esi, employerPf, employerEsi, tds, net, costToCompany: roundMoney(gross + employerPf + employerEsi) };
 }
 
 function escapeXml(value: string) {
@@ -248,10 +298,32 @@ export function tallyVoucherXml(book: SiteBook) {
     .filter((payment) => payment.status === "APPROVED")
     .map((payment, index) => {
       const amount = payment.amount.toFixed(2);
-      return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER VCHTYPE="Payment" ACTION="Create"><DATE>${new Date().toISOString().slice(0, 10).replaceAll("-", "")}</DATE><VOUCHERNUMBER>PAY-${index + 1}</VOUCHERNUMBER><NARRATION>${escapeXml(payment.purpose)}</NARRATION><ALLLEDGERENTRIES.LIST><LEDGERNAME>${escapeXml(payment.payee)}</LEDGERNAME><ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE><AMOUNT>-${amount}</AMOUNT></ALLLEDGERENTRIES.LIST><ALLLEDGERENTRIES.LIST><LEDGERNAME>Mattel Infrastructures Operating Account</LEDGERNAME><ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE><AMOUNT>${amount}</AMOUNT></ALLLEDGERENTRIES.LIST></VOUCHER></TALLYMESSAGE>`;
+      const narration = [payment.purpose, payment.costCode].filter(Boolean).join(" · ");
+      return `<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER VCHTYPE="Payment" ACTION="Create"><DATE>${new Date().toISOString().slice(0, 10).replaceAll("-", "")}</DATE><VOUCHERNUMBER>PAY-${index + 1}</VOUCHERNUMBER><NARRATION>${escapeXml(narration)}</NARRATION><ALLLEDGERENTRIES.LIST><LEDGERNAME>${escapeXml(payment.payee)}</LEDGERNAME><ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE><AMOUNT>-${amount}</AMOUNT></ALLLEDGERENTRIES.LIST><ALLLEDGERENTRIES.LIST><LEDGERNAME>Mattel Infrastructures Operating Account</LEDGERNAME><ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE><AMOUNT>${amount}</AMOUNT></ALLLEDGERENTRIES.LIST></VOUCHER></TALLYMESSAGE>`;
     })
     .join("");
   return `<?xml version="1.0"?><ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC><REQUESTDATA>${vouchers}</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;
+}
+
+export function emptySiteBook(): SiteBook {
+  return {
+    diary: [],
+    boq: [],
+    raBills: [],
+    orders: [],
+    receipts: [],
+    issues: [],
+    equipment: [],
+    budget: [],
+    drawings: [],
+    rfis: [],
+    submittals: [],
+    talks: [],
+    incidents: [],
+    leave: [],
+    deductions: [],
+    payments: [],
+  };
 }
 
 export function seedSiteBook(): SiteBook {
@@ -260,9 +332,11 @@ export function seedSiteBook(): SiteBook {
     number: "MI/PO/2026/0001",
     vendorName: "ABC Supplies",
     itemName: "Cement",
+    unit: "Bags",
     quantity: 50,
     rate: 420,
     issuedOn: "2026-10-20",
+    expectedOn: "2026-10-22",
   };
   return {
     diary: [
@@ -274,6 +348,10 @@ export function seedSiteBook(): SiteBook {
         workDone: "Blockwork on the east wall",
         quantity: 12,
         unit: "sqm",
+        labourCount: 8,
+        skilledCount: 3,
+        hindrance: "",
+        instructions: "",
         photoName: "",
         photoDataUrl: "",
       },
@@ -281,6 +359,7 @@ export function seedSiteBook(): SiteBook {
     boq: [
       {
         id: "boq-masonry",
+        section: "Civil",
         costCode: "CIV-MASN",
         description: "Block masonry",
         unit: "sqm",
@@ -291,21 +370,23 @@ export function seedSiteBook(): SiteBook {
     ],
     raBills: [],
     orders: [order],
-    receipts: [{ id: "grn-cement", orderId: order.id, quantity: 20, receivedOn: "2026-10-21" }],
+    receipts: [{ id: "grn-cement", orderId: order.id, quantity: 20, rejectedQuantity: 0, receivedOn: "2026-10-21" }],
     issues: [],
     equipment: [],
-    budget: [{ id: "budget-masonry", costCode: "CIV-MASN", name: "Block masonry", budgetAmount: 45000, actualAmount: 18000 }],
-    drawings: [{ id: "drawing-a101", number: "A-101", title: "Compound wall plan", revision: "A", revisedOn: "2026-10-01" }],
-    rfis: [{ id: "rfi-1", number: "MI/RFI/2026/0001", question: "Confirm the wall height at the gate.", answer: "", status: "OPEN" }],
-    submittals: [{ id: "submittal-1", title: "Block sample", specSection: "04 20 00", status: "DRAFT" }],
+    budget: [{ id: "budget-masonry", costCode: "CIV-MASN", name: "Block masonry", budgetAmount: 45000, committedAmount: 21000, actualAmount: 18000 }],
+    drawings: [{ id: "drawing-a101", number: "A-101", title: "Compound wall plan", discipline: "Architectural", revision: "A", revisedOn: "2026-10-01", status: "CURRENT", remarks: "" }],
+    rfis: [{ id: "rfi-1", number: "MI/RFI/2026/0001", discipline: "Civil", askedBy: "Site supervisor", dueDate: "2026-10-25", question: "Confirm the wall height at the gate.", answer: "", status: "OPEN" }],
+    submittals: [{ id: "submittal-1", title: "Block sample", specSection: "04 20 00", submittalType: "SAMPLE", reviewer: "", status: "DRAFT" }],
     talks: [],
     incidents: [],
     leave: [
       {
         id: "leave-rajesh",
         staffName: "Rajesh Kumar",
+        leaveType: "CASUAL",
         startDate: "2026-10-28",
         endDate: "2026-10-28",
+        days: 1,
         reason: "Personal",
         status: "PENDING",
       },
@@ -317,6 +398,8 @@ export function seedSiteBook(): SiteBook {
         payee: "ABC Supplies",
         amount: 8400,
         purpose: "Cement received against MI/PO/2026/0001",
+        costCode: "CIV-MASN",
+        requestedBy: "Site manager",
         status: "PENDING",
       },
     ],
@@ -369,12 +452,17 @@ export function raiseRaBill(book: SiteBook, boqId: string, issuedOn: string, gst
     return { ok: false as const, message: "There is no new executed quantity to bill." };
   }
   const totals = calculateInvoiceTotals([{ quantity, rate: line.rate }], { gstEnabled, isInterstate: false });
+  const retentionPercent = 5;
+  const retentionAmount = roundMoney(totals.total * (retentionPercent / 100));
   const bill: RaBill = {
     id: nid("ra"),
     billNumber: nextNumber(book.raBills.map((item) => item.billNumber), "MI/RA", yearOf(issuedOn)),
     boqId: line.id,
     quantity,
     ...totals,
+    retentionPercent,
+    retentionAmount,
+    netPayable: roundMoney(totals.total - retentionAmount),
     issuedOn,
   };
   return { ok: true as const, book: { ...book, raBills: [bill, ...book.raBills] }, bill };
@@ -402,7 +490,7 @@ export function receiveGoods(book: SiteBook, orderId: string, quantity: number, 
   if (receivedQty(book, order.id) + quantity > order.quantity) {
     return { ok: false as const, message: "Received quantity cannot pass the order." };
   }
-  const row: GoodsReceipt = { id: nid("grn"), orderId: order.id, quantity, receivedOn };
+  const row: GoodsReceipt = { id: nid("grn"), orderId: order.id, quantity, rejectedQuantity: 0, receivedOn };
   return { ok: true as const, book: { ...book, receipts: [row, ...book.receipts] }, row };
 }
 
@@ -437,7 +525,15 @@ export function addDrawing(book: SiteBook, drawing: Omit<Drawing, "id" | "revisi
   if (!drawing.number.trim() || !drawing.title.trim()) {
     return { ok: false as const, message: "Enter the drawing number and title." };
   }
-  const row: Drawing = { ...drawing, id: nid("drawing"), number: drawing.number.trim(), title: drawing.title.trim(), revision: "A" };
+  const row: Drawing = {
+    ...drawing,
+    id: nid("drawing"),
+    number: drawing.number.trim(),
+    title: drawing.title.trim(),
+    revision: "A",
+    status: "CURRENT",
+    remarks: drawing.remarks ?? "",
+  };
   return { ok: true as const, book: { ...book, drawings: [row, ...book.drawings] }, row };
 }
 
@@ -449,7 +545,16 @@ export function reviseDrawing(book: SiteBook, drawingId: string, revisedOn: stri
   const revision = String.fromCharCode(drawing.revision.charCodeAt(0) + 1);
   return {
     ok: true as const,
-    book: { ...book, drawings: book.drawings.map((item) => (item.id === drawing.id ? { ...item, revision, revisedOn } : item)) },
+    book: {
+      ...book,
+      drawings: book.drawings.map((item) =>
+        item.id === drawing.id
+          ? { ...item, revision, revisedOn, status: "CURRENT" as const }
+          : item.status === "CURRENT" && item.number === drawing.number
+            ? { ...item, status: "SUPERSEDED" as const }
+            : item,
+      ),
+    },
   };
 }
 
@@ -460,6 +565,9 @@ export function addRfi(book: SiteBook, question: string, askedOn: string) {
   const row: Rfi = {
     id: nid("rfi"),
     number: nextNumber(book.rfis.map((item) => item.number), "MI/RFI", yearOf(askedOn)),
+    discipline: "General",
+    askedBy: "",
+    dueDate: askedOn,
     question: question.trim(),
     answer: "",
     status: "OPEN",
@@ -477,7 +585,7 @@ export function answerRfi(book: SiteBook, rfiId: string, answer: string) {
   }
   return {
     ok: true as const,
-    book: { ...book, rfis: book.rfis.map((item) => (item.id === row.id ? { ...item, answer: answer.trim(), status: "ANSWERED" } : item)) },
+    book: { ...book, rfis: book.rfis.map((item) => (item.id === row.id ? { ...item, answer: answer.trim(), status: "ANSWERED" as const } : item)) },
   };
 }
 
@@ -485,7 +593,14 @@ export function addSubmittal(book: SiteBook, title: string, specSection: string)
   if (!title.trim()) {
     return { ok: false as const, message: "Enter the submittal title." };
   }
-  const row: Submittal = { id: nid("submittal"), title: title.trim(), specSection: specSection.trim(), status: "DRAFT" };
+  const row: Submittal = {
+    id: nid("submittal"),
+    title: title.trim(),
+    specSection: specSection.trim(),
+    submittalType: "SAMPLE",
+    reviewer: "",
+    status: "DRAFT",
+  };
   return { ok: true as const, book: { ...book, submittals: [row, ...book.submittals] }, row };
 }
 

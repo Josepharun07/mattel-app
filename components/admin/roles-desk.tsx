@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createRoleAction, deleteRoleAction } from "@/actions/staff-actions";
 import { PageFrame } from "@/components/shell/page-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { canAssignStaffRoles } from "@/lib/staff/directory";
-import { addJobRole, deleteJobRole, useStaffDirectory } from "@/lib/staff/session";
-import { useWorkspace } from "@/lib/workspace/store";
+import type { AccessRole } from "@/lib/settings/appearance";
+import { canAssignStaffRoles, type StaffDirectory } from "@/lib/staff/directory";
 
-export function RolesDesk() {
-  const directory = useStaffDirectory();
-  const workspace = useWorkspace();
-  const allowed = canAssignStaffRoles(workspace.role);
+export function RolesDesk({ directory, role }: { directory: StaffDirectory; role: AccessRole }) {
+  const router = useRouter();
+  const allowed = canAssignStaffRoles(role);
   const [name, setName] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -28,11 +28,14 @@ export function RolesDesk() {
           className="flex flex-wrap items-end gap-2 rounded-xl border bg-white p-4"
           onSubmit={(event) => {
             event.preventDefault();
-            const result = addJobRole(name, workspace.role);
+            void (async () => {
+            const result = await createRoleAction(name);
             setNotice(result.ok ? `${result.role.name} added.` : result.message);
             if (result.ok) {
               setName("");
+              router.refresh();
             }
+            })();
           }}
         >
           <label className="min-w-48 flex-1 space-y-1 text-sm">
@@ -43,7 +46,7 @@ export function RolesDesk() {
         </form>
       ) : (
         <p className="rounded-xl border bg-white px-4 py-3 text-sm text-muted-foreground">
-          Signed in as {workspace.users.find((person) => person.id === workspace.currentUserId)?.name}. Only an owner or a super admin can create or assign roles.
+          Only an owner or a super admin can create or assign roles.
         </p>
       )}
       <ul className="divide-y rounded-xl border bg-white">
@@ -61,8 +64,11 @@ export function RolesDesk() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const result = deleteJobRole(role.id, workspace.role);
-                    setNotice(result.ok ? `${role.name} removed.` : result.message);
+                    void (async () => {
+                      const result = await deleteRoleAction(role.id);
+                      setNotice(result.ok ? "Role removed." : result.message);
+                      if (result.ok) router.refresh();
+                    })();
                   }}
                 >
                   Remove

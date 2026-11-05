@@ -92,6 +92,20 @@
       "when": 1791366742251,
       "tag": "0012_bored_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792700000000,
+      "tag": "0013_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792710000000,
+      "tag": "0014_industry_fields",
+      "breakpoints": true
     }
   ]
 }

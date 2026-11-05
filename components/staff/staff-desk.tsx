@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { assignRolesAction, saveStaffAction } from "@/actions/staff-actions";
 import { PageFrame } from "@/components/shell/page-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { canAssignStaffRoles, roleNames, type StaffPhone, type StaffRecord } from "@/lib/staff/directory";
-import { saveStaff, setStaffRoles, useStaffDirectory } from "@/lib/staff/session";
-import { useWorkspace } from "@/lib/workspace/store";
+import type { AccessRole } from "@/lib/settings/appearance";
+import { canAssignStaffRoles, roleNames, type StaffDirectory, type StaffPhone, type StaffRecord } from "@/lib/staff/directory";
 
 function emptyDraft() {
   return {
@@ -40,10 +41,9 @@ function fromRecord(person: StaffRecord) {
   };
 }
 
-export function StaffDesk() {
-  const directory = useStaffDirectory();
-  const workspace = useWorkspace();
-  const allowed = canAssignStaffRoles(workspace.role);
+export function StaffDesk({ directory, role }: { directory: StaffDirectory; role: AccessRole }) {
+  const router = useRouter();
+  const allowed = canAssignStaffRoles(role);
   const people = directory.staff.filter((person) => !person.deletedAt);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
@@ -68,14 +68,14 @@ export function StaffDesk() {
     setRoleIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
-  function save() {
-    const result = saveStaff(draft, editingId === "new" ? undefined : editingId ?? undefined);
+  async function save() {
+    const result = await saveStaffAction(draft, editingId === "new" ? undefined : editingId ?? undefined);
     if (!result.ok) {
       setNotice(result.message);
       return;
     }
     if (allowed) {
-      const assigned = setStaffRoles(result.record.id, roleIds, workspace.role);
+      const assigned = await assignRolesAction(result.record.id, roleIds);
       if (!assigned.ok) {
         setNotice(assigned.message);
         return;
@@ -83,6 +83,7 @@ export function StaffDesk() {
     }
     setEditingId(result.record.id);
     setNotice("Staff record saved.");
+    router.refresh();
   }
 
   return (

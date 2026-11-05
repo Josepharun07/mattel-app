@@ -38,8 +38,6 @@ type InvoiceStudioContextValue = {
   setGstEnabled: (value: boolean) => void;
   isInterstate: boolean;
   setInterstate: (value: boolean) => void;
-  letterheadMode: boolean;
-  setLetterheadMode: (value: boolean) => void;
   terms: string;
   setTerms: (value: string) => void;
   signatureUrl: string | null;
@@ -100,11 +98,9 @@ export function InvoiceStudioProvider({
   const [terms, setTerms] = useState(data.company.defaultTerms || "Payment due within 15 days of issue.");
   const [signatureUrl, setSignatureUrl] = useState<string | null>(data.company.signatureUrl);
   const [lines, setLines] = useState<InvoiceLine[]>([openingLine(data)]);
-  const [letterheadMode, setLetterheadMode] = useState(data.company.defaultStationeryMode);
   const workspace = useWorkspace();
   const settingsStamp = [
     workspace.settings.defaultTerms,
-    String(workspace.settings.defaultStationeryMode),
     workspace.settings.signatureDataUrl ?? "",
     workspace.settings.unitTypes.join("|"),
   ].join("§");
@@ -112,7 +108,6 @@ export function InvoiceStudioProvider({
   if (settingsStamp !== seenSettings) {
     setSeenSettings(settingsStamp);
     setTerms(workspace.settings.defaultTerms || data.company.defaultTerms);
-    setLetterheadMode(workspace.settings.defaultStationeryMode);
     if (workspace.settings.signatureDataUrl) {
       setSignatureUrl(workspace.settings.signatureDataUrl);
     }
@@ -195,7 +190,7 @@ export function InvoiceStudioProvider({
         issueDate,
         transitPassNo: transitPassNo || undefined,
         ewayBillNo: ewayBillNo || undefined,
-        letterheadMode,
+        letterheadMode: true,
         gstEnabled,
         isInterstate,
         terms,
@@ -241,8 +236,6 @@ export function InvoiceStudioProvider({
         setGstEnabled,
         isInterstate,
         setInterstate,
-        letterheadMode,
-        setLetterheadMode,
         terms,
         setTerms,
         signatureUrl,
@@ -363,7 +356,7 @@ export function InvoiceForm() {
       </section>
 
       <section className="space-y-3 rounded-xl border bg-white p-4">
-        <h2 className="text-sm font-medium">Tax and stationery</h2>
+        <h2 className="text-sm font-medium">Tax</h2>
         <div className="flex items-center justify-between gap-3">
           <Label htmlFor="gst-enabled">GST enabled</Label>
           <Switch id="gst-enabled" checked={studio.gstEnabled} onCheckedChange={studio.setGstEnabled} />
@@ -385,21 +378,6 @@ export function InvoiceForm() {
           >
             Inter · IGST
           </Button>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span>
-            <span className="block text-sm font-medium">
-              {studio.letterheadMode ? "Digital header" : "Pre-printed stationery"}
-            </span>
-            <span className="mt-1 block text-xs text-muted-foreground">
-              Stationery mode hides the logo, header, signature stamp, and footer, and offsets the sheet by 4.5cm.
-            </span>
-          </span>
-          <Switch
-            checked={studio.letterheadMode}
-            onCheckedChange={studio.setLetterheadMode}
-            aria-label="Digital header mode"
-          />
         </div>
       </section>
 
