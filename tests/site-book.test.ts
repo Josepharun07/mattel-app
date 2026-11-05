@@ -38,8 +38,8 @@ describe("site book", () => {
   });
 
   it("signs in local staff, vendor, and client accounts", () => {
-    expect(signInLocal("owner", "owner").ok).toBe(true);
-    expect(signInLocal("vendor", "vendor").ok).toBe(true);
+    expect(signInLocal(process.env.ADMIN_USERNAME ?? "", process.env.ADMIN_PASSWORD ?? "").ok).toBe(Boolean(process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD));
+    expect(signInLocal("vendor", "vendor").ok).toBe(false);
     expect(signInLocal("client", "wrong").ok).toBe(false);
   });
 });

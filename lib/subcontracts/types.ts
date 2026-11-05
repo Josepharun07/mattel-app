@@ -37,3 +37,7 @@ export type SubcontractDirectory = {
   projects: { id: string; name: string }[];
   offline: boolean;
 };
+
+export function emptySubcontracts(): SubcontractDirectory {
+  return { contracts: [], staff: [], projects: [], offline: true };
+}

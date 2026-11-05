@@ -9,7 +9,7 @@ import { applyPayslipVersionSuffix, recalculateSettlement } from "@/lib/engines/
 import { dateKey, noonUtc, writeAccountSettlement, writeSettlement } from "@/lib/payroll/ledger";
 import { buildSettlementPreview } from "@/lib/payroll/settle";
 import { currentWeek } from "@/lib/payroll/range";
-import { buildSamplePayroll } from "@/lib/payroll/sample";
+import { emptyPayroll } from "@/lib/payroll/types";
 import type {
   AdvancePaymentMode,
   AttendanceBatch,
@@ -231,36 +231,36 @@ async function loadDashboard(startDate: string, endDate: string): Promise<Payrol
   };
 }
 
-function sampleFor(startDate: string, endDate: string) {
+function emptyFor(startDate: string, endDate: string) {
   const week = currentWeek();
   const start = datePattern.test(startDate) ? startDate : week.start;
   const end = datePattern.test(endDate) ? endDate : week.end;
   if (start > end) {
-    return buildSamplePayroll(week.start, week.end);
+    return emptyPayroll(week.start, week.end);
   }
-  return buildSamplePayroll(start, end);
+  return emptyPayroll(start, end);
 }
 
 export async function getWeeklyPayrollSummary(startDate: string, endDate: string): Promise<PayrollDashboard> {
-  const sample = sampleFor(startDate, endDate);
+  const empty = emptyFor(startDate, endDate);
   if (!process.env.DATABASE_URL) {
-    return sample;
+    return empty;
   }
   try {
-    return await loadDashboard(sample.periodStart, sample.periodEnd);
+    return await loadDashboard(empty.periodStart, empty.periodEnd);
   } catch {
-    return sample;
+    return empty;
   }
 }
 
 export async function getSettlementHistory(): Promise<SettlementRow[]> {
   if (!process.env.DATABASE_URL) {
-    return buildSamplePayroll(currentWeek().start, currentWeek().end).settlements;
+    return [];
   }
   try {
     return await loadSettlements();
   } catch {
-    return buildSamplePayroll(currentWeek().start, currentWeek().end).settlements;
+    return [];
   }
 }
 

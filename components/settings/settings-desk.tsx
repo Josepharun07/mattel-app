@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { Building2, CreditCard, Database, FileSignature, LogOut, Palette, Settings, Sliders } from "lucide-react";
 import { signOutAction } from "@/actions/auth-actions";
 import type { DatabaseStatus } from "@/actions/database-actions";
@@ -30,7 +31,7 @@ type TabId = (typeof tabs)[number]["id"];
 
 export function SettingsDesk({ initial, database }: { initial: SystemSettingsView; database: DatabaseStatus }) {
   const workspace = useWorkspace();
-  const [tab, setTab] = useState<TabId>("profile");
+  const [tab, setTab] = usePageState<TabId>("tab", "profile");
   const [settings, setSettings] = useState(initial);
 
   function save(patch: Partial<SystemSettingsView>) {

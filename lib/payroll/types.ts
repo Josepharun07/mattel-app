@@ -85,6 +85,19 @@ export type PayrollDashboard = {
   offline: boolean;
 };
 
+export function emptyPayroll(periodStart: string, periodEnd: string): PayrollDashboard {
+  return {
+    periodStart,
+    periodEnd,
+    staff: [],
+    attendance: [],
+    earlierUnsettled: [],
+    settlements: [],
+    advances: [],
+    offline: true,
+  };
+}
+
 export type PayrollMutationResult = {
   success: boolean;
   offline?: boolean;

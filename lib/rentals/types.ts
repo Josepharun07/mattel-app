@@ -43,3 +43,7 @@ export type RentalDirectory = {
   projects: { id: string; name: string }[];
   offline: boolean;
 };
+
+export function emptyRentals(): RentalDirectory {
+  return { assets: [], history: [], staff: [], projects: [], offline: true };
+}

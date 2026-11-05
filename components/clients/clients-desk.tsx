@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { type FormEvent } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/actions/backend-actions";
 import { PageFrame } from "@/components/shell/page-frame";
@@ -22,8 +23,8 @@ const emptyForm = { name: "", companyName: "", phone: "", email: "", address: ""
 
 export function ClientsDesk({ clients }: { clients: ClientRow[] }) {
   const router = useRouter();
-  const [notice, setNotice] = useState("");
-  const [form, setForm] = useState(emptyForm);
+  const [notice, setNotice] = usePageState("notice", "");
+  const [form, setForm] = usePageState("form", emptyForm);
 
   async function add(event: FormEvent) {
     event.preventDefault();

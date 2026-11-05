@@ -16,10 +16,14 @@ import {
 } from "@/lib/settings/profile";
 import { getPresignedUploadUrl, type BrandingFolder } from "@/lib/storage/s3-client";
 
+function offlineSettings(): SystemSettingsView {
+  return { ...defaultSystemSettings, unitTypes: [...defaultSystemSettings.unitTypes], offline: true };
+}
+
 function viewFromRow(row: typeof systemSettings.$inferSelect, offline: boolean): SystemSettingsView {
   return {
     companyName: row.companyName,
-    tagline: row.tagline ?? defaultSystemSettings.tagline,
+    tagline: row.tagline ?? "",
     address: row.address,
     phone: row.phone,
     email: row.email,
@@ -29,10 +33,10 @@ function viewFromRow(row: typeof systemSettings.$inferSelect, offline: boolean):
     accountNumber: row.accountNumber,
     ifscCode: row.ifscCode,
     upiId: row.upiId ?? "",
-    unitTypes: row.unitTypes.length > 0 ? row.unitTypes : [...defaultSystemSettings.unitTypes],
+    unitTypes: row.unitTypes,
     logoUrl: row.logoUrl ?? "",
     signatureUrl: row.signatureUrl ?? "",
-    defaultTerms: row.defaultTerms ?? defaultSystemSettings.defaultTerms,
+    defaultTerms: row.defaultTerms ?? "",
     defaultStationeryMode: row.defaultStationeryMode,
     offline,
   };
@@ -45,7 +49,7 @@ async function loadRow() {
 
 export async function getSystemSettings(): Promise<SystemSettingsView> {
   if (!process.env.DATABASE_URL) {
-    return { ...defaultSystemSettings, unitTypes: [...defaultSystemSettings.unitTypes], offline: true };
+    return offlineSettings();
   }
 
   try {
@@ -58,8 +62,8 @@ export async function getSystemSettings(): Promise<SystemSettingsView> {
       .insert(systemSettings)
       .values({
         ...defaultSystemSettings,
-        gstin: null,
-        upiId: null,
+        gstin: defaultSystemSettings.gstin || null,
+        upiId: defaultSystemSettings.upiId || null,
         logoUrl: null,
         signatureUrl: null,
       })
@@ -67,7 +71,7 @@ export async function getSystemSettings(): Promise<SystemSettingsView> {
     revalidatePath("/settings");
     return viewFromRow(created, false);
   } catch {
-    return { ...defaultSystemSettings, unitTypes: [...defaultSystemSettings.unitTypes], offline: true };
+    return offlineSettings();
   }
 }
 

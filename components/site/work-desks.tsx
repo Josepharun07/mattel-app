@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePageState } from "@/lib/navigation/page-memory";
 import {
   billBoq,
   createBoqLine,
@@ -18,7 +18,7 @@ import { billedQty, boqProgress, budgetVariance, hireCost, type SiteBook } from 
 
 function useNotice() {
   const router = useRouter();
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = usePageState("notice", "");
   return {
     notice,
     async report(result: Promise<{ ok: boolean; message?: string }>) {
@@ -33,8 +33,8 @@ function useNotice() {
 
 export function BoqDesk({ book }: { book: SiteBook }) {
   const { notice, report } = useNotice();
-  const [line, setLine] = useState({ section: "Civil", costCode: "", description: "", unit: "sqm", contractQty: "1", rate: "0" });
-  const [extra, setExtra] = useState("1");
+  const [line, setLine] = usePageState("line", { section: "Civil", costCode: "", description: "", unit: "sqm", contractQty: "1", rate: "0" });
+  const [extra, setExtra] = usePageState("extra", "1");
 
   return (
     <PageFrame eyebrow="Site" title="Bill of quantities" description="Each line has a cost code, a contract quantity, and the quantity executed. A running-account bill covers only the quantity that has not been billed." width="wide">
@@ -82,7 +82,7 @@ export function BoqDesk({ book }: { book: SiteBook }) {
 
 export function EquipmentDesk({ book }: { book: SiteBook }) {
   const { notice, report } = useNotice();
-  const [log, setLog] = useState({ machineName: "", ownership: "HIRED" as const, operatorName: "", siteName: "", logDate: "2026-10-23", openingReading: "0", closingReading: "0", runHours: "0", idleHours: "0", fuelLitres: "0", hireRate: "0", breakdown: "" });
+  const [log, setLog] = usePageState("log", { machineName: "", ownership: "HIRED" as const, operatorName: "", siteName: "", logDate: "2026-10-23", openingReading: "0", closingReading: "0", runHours: "0", idleHours: "0", fuelLitres: "0", hireRate: "0", breakdown: "" });
 
   return (
     <PageFrame eyebrow="Site" title="Equipment" description="Running hours, idle hours, fuel, hire rate, and breakdown notes for owned and hired machines.">
@@ -113,7 +113,7 @@ export function EquipmentDesk({ book }: { book: SiteBook }) {
 
 export function BudgetDesk({ book }: { book: SiteBook }) {
   const { notice, report } = useNotice();
-  const [line, setLine] = useState({ costCode: "", name: "", budgetAmount: "0", committedAmount: "0", actualAmount: "0" });
+  const [line, setLine] = usePageState("line", { costCode: "", name: "", budgetAmount: "0", committedAmount: "0", actualAmount: "0" });
 
   return (
     <PageFrame eyebrow="Site" title="Budget" description="Cost codes compare the budget with the amount spent. The difference is what remains.">

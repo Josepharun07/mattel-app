@@ -30,6 +30,7 @@ import { PortalHome } from "@/components/site/control-desks";
 import type { CurrentSession } from "@/lib/auth/current";
 import type { RaBill } from "@/lib/site/book";
 import { accentById, effectiveAccent } from "@/lib/settings/appearance";
+import { noteNavigation, recallScroll, rememberScroll } from "@/lib/navigation/page-memory";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace/store";
 
@@ -146,9 +147,15 @@ export function AppShell({
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
   const workspace = useWorkspace();
   useEffect(() => {
-    preferStored = true;
-    window.dispatchEvent(new Event(navEvent));
-  }, []);
+    noteNavigation(pathname);
+    const top = recallScroll(pathname);
+    requestAnimationFrame(() => window.scrollTo(0, top));
+  }, [pathname]);
+  useEffect(() => {
+    const save = () => rememberScroll(pathname, window.scrollY);
+    window.addEventListener("scroll", save, { passive: true });
+    return () => window.removeEventListener("scroll", save);
+  }, [pathname]);
   useEffect(() => {
     if (session.kind === "staff" && session.role && session.role !== workspace.role) {
       workspace.setRole(session.role);

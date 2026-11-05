@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { calculateRentalCharge, isRentalOverdue, overdueDays, validateBorrower } from "@/lib/engines/rental-engine";
-import { buildSampleRentals } from "@/lib/rentals/sample";
 
 describe("rental engine", () => {
   it("flags an open rental past the deadline and charges at least one day", () => {
@@ -25,15 +24,5 @@ describe("rental engine", () => {
         externalBorrowerPhone: "9847001122",
       }).ok,
     ).toBe(true);
-  });
-
-  it("builds an overdue hammer and a closed compactor charge", () => {
-    const directory = buildSampleRentals(new Date(2026, 9, 7));
-    const hammer = directory.assets.find((asset) => asset.id === "asset-hammer");
-    expect(hammer?.overdue).toBe(true);
-    expect(hammer?.daysOverdue).toBe(3);
-    const closed = directory.history.find((row) => row.id === "assign-compactor");
-    expect(closed?.totalRentCharged).toBe(2400);
-    expect(directory.history.filter((row) => row.overdue)).toHaveLength(1);
   });
 });

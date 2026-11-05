@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import {
   flexRender,
   type SortingState,
@@ -26,8 +27,8 @@ export function InventoryTable({
   items: CatalogItem[];
   onAdjust: (item: CatalogItem) => void;
 }) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 8 });
+  const [sorting, setSorting] = usePageState<SortingState>("sort", []);
+  const [pagination, setPagination] = usePageState("page", { pageIndex: 0, pageSize: 8 });
   const columns = useMemo<LegacyColumnDef<CatalogItem>[]>(
     () => [
       { accessorKey: "name", header: "Material" },

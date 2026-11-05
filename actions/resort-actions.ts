@@ -16,8 +16,8 @@ import {
   type ResortLeaseStatus,
 } from "@/lib/engines/resort-engine";
 import { roundMoney } from "@/lib/money";
-import { buildSampleResort } from "@/lib/resort/sample";
 import type { ResortDirectory, ResortInvoice, ResortLease, ResortPayment } from "@/lib/resort/types";
+import { emptyResort } from "@/lib/resort/types";
 
 function money(amount: number) {
   return roundMoney(amount).toFixed(2);
@@ -34,7 +34,7 @@ function dayValue(value: Date | string | null) {
 
 export async function getResortLeases(): Promise<ResortDirectory> {
   if (!process.env.DATABASE_URL) {
-    return buildSampleResort();
+    return emptyResort();
   }
 
   try {
@@ -102,7 +102,7 @@ export async function getResortLeases(): Promise<ResortDirectory> {
     });
     return { offline: false, leases, invoices: resortInvoices, payments };
   } catch {
-    return buildSampleResort();
+    return emptyResort();
   }
 }
 

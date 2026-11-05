@@ -5,33 +5,20 @@ export type AuthSession =
   | { kind: "vendor"; username: string; name: string }
   | { kind: "client"; username: string; name: string };
 
-type Account = AuthSession & { password: string };
-
-const accounts: Account[] = [
-  { kind: "staff", username: "operator", password: "operator", name: "Site operator", role: "OPERATOR", userId: "user-operator" },
-  { kind: "staff", username: "manager", password: "manager", name: "Site manager", role: "MANAGER", userId: "user-manager" },
-  { kind: "staff", username: "owner", password: "owner", name: "Owner", role: "OWNER", userId: "user-owner" },
-  { kind: "staff", username: "admin@mattelinfra.com", password: "admin", name: "Super admin", role: "SUPER_ADMIN", userId: "user-super" },
-  { kind: "vendor", username: "vendor", password: "vendor", name: "ABC Supplies" },
-  { kind: "client", username: "client", password: "client", name: "ABC Constructions" },
-];
-
-export const localAccountHints = accounts.map((account) => ({
-  username: account.username,
-  password: account.password,
-  name: account.name,
-}));
-
 export function signInLocal(username: string, password: string) {
-  const account = accounts.find((item) => item.username === username.trim().toLowerCase() && item.password === password);
-  if (!account) {
+  const expectedUser = process.env.ADMIN_USERNAME?.trim().toLowerCase() ?? "";
+  const expectedPassword = process.env.ADMIN_PASSWORD ?? "";
+  if (!expectedUser || !expectedPassword || username.trim().toLowerCase() !== expectedUser || password !== expectedPassword) {
     return { ok: false as const, message: "Those details do not match a local account." };
   }
-  if (account.kind === "staff") {
-    return {
-      ok: true as const,
-      session: { kind: "staff" as const, username: account.username, name: account.name, role: account.role, userId: account.userId },
-    };
-  }
-  return { ok: true as const, session: { kind: account.kind, username: account.username, name: account.name } };
+  return {
+    ok: true as const,
+    session: {
+      kind: "staff" as const,
+      username: expectedUser,
+      name: "Super admin",
+      role: "SUPER_ADMIN" as const,
+      userId: "env-admin",
+    },
+  };
 }

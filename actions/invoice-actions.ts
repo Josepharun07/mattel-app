@@ -21,8 +21,8 @@ import {
   generateInvoiceNumber,
 } from "@/lib/engines/invoice-engine";
 import { writeStockAdjustment } from "@/lib/inventory/ledger";
-import { UNIT_TYPES } from "@/lib/invoicing/studio-data";
 import { roundMoney } from "@/lib/money";
+import { defaultSystemSettings } from "@/lib/settings/profile";
 
 export type InvoiceClientOption = {
   id: string;
@@ -75,73 +75,22 @@ export type InvoiceStudioData = {
   databaseConnected: boolean;
 };
 
-const fallbackCompany: InvoiceCompanyProfile = {
-  companyName: "Mattel Infrastructures",
-  tagline: "Building Tomorrow's Foundation",
-  phone: "+91 98765 43210",
-  email: "contact@mattelinfra.com",
-  address: "Kerala, India",
-  gstin: null,
-  bankName: "State Bank of India",
-  accountName: "Mattel Infrastructures Operating Account",
-  accountNumber: "40910029831",
-  ifscCode: "SBIN0001234",
-  upiId: null,
-  logoUrl: null,
-  signatureUrl: null,
-  defaultTerms: "Payment due within 15 days of issue.",
-  defaultStationeryMode: false,
-};
-
-const fallbackStudio: InvoiceStudioData = {
-  databaseConnected: false,
-  company: fallbackCompany,
-  unitTypes: [...UNIT_TYPES],
-  clients: [
-    {
-      id: "client-abc",
-      name: "ABC Constructions",
-      address: "Kochi, Kerala",
+function emptyStudio(): InvoiceStudioData {
+  return {
+    databaseConnected: false,
+    company: {
+      ...defaultSystemSettings,
       gstin: null,
-      phone: "9800000001",
-      email: "accounts@abc.example",
+      upiId: null,
+      logoUrl: null,
+      signatureUrl: null,
     },
-    {
-      id: "client-coastal",
-      name: "Coastal Stays",
-      address: "Alappuzha, Kerala",
-      gstin: null,
-      phone: "9800000002",
-      email: "stay@coastal.example",
-    },
-  ],
-  projects: [
-    {
-      id: "project-abc-site",
-      clientId: "client-abc",
-      name: "Compound Wall & Yard Fill",
-      location: "Kochi, Kerala",
-    },
-    {
-      id: "project-resort-lease",
-      clientId: "client-coastal",
-      name: "Guest Villa Monthly Lease",
-      location: "Alappuzha, Kerala",
-    },
-  ],
-  inventory: [
-    { id: "item-msand", name: "M-Sand", unitType: "CFT", centralRate: 45, currentStock: 1200 },
-    { id: "item-psand", name: "P-Sand", unitType: "CFT", centralRate: 55, currentStock: 800 },
-    { id: "item-metal", name: "20mm Metal", unitType: "CFT", centralRate: 42, currentStock: 1500 },
-    {
-      id: "item-opc",
-      name: "Ordinary Portland Cement (OPC)",
-      unitType: "Bags",
-      centralRate: 380,
-      currentStock: 400,
-    },
-  ],
-};
+    unitTypes: [...defaultSystemSettings.unitTypes],
+    clients: [],
+    projects: [],
+    inventory: [],
+  };
+}
 
 function money(amount: number) {
   return roundMoney(amount).toFixed(2);
@@ -149,7 +98,7 @@ function money(amount: number) {
 
 export async function getInvoiceStudioData(): Promise<InvoiceStudioData> {
   if (!process.env.DATABASE_URL) {
-    return fallbackStudio;
+    return emptyStudio();
   }
 
   try {
@@ -165,26 +114,23 @@ export async function getInvoiceStudioData(): Promise<InvoiceStudioData> {
     return {
       databaseConnected: true,
       company: {
-        companyName: settings?.companyName ?? fallbackCompany.companyName,
-        tagline: settings?.tagline ?? fallbackCompany.tagline,
-        phone: settings?.phone || fallbackCompany.phone,
-        email: settings?.email || fallbackCompany.email,
-        address: settings?.address || fallbackCompany.address,
+        companyName: settings?.companyName ?? "",
+        tagline: settings?.tagline ?? "",
+        phone: settings?.phone ?? "",
+        email: settings?.email ?? "",
+        address: settings?.address ?? "",
         gstin: settings?.gstin ?? null,
-        bankName: settings?.bankName || fallbackCompany.bankName,
-        accountName: settings?.accountName || fallbackCompany.accountName,
-        accountNumber: settings?.accountNumber || fallbackCompany.accountNumber,
-        ifscCode: settings?.ifscCode || fallbackCompany.ifscCode,
+        bankName: settings?.bankName ?? "",
+        accountName: settings?.accountName ?? "",
+        accountNumber: settings?.accountNumber ?? "",
+        ifscCode: settings?.ifscCode ?? "",
         upiId: settings?.upiId ?? null,
         logoUrl: settings?.logoUrl ?? null,
         signatureUrl: settings?.signatureUrl ?? null,
-        defaultTerms: settings?.defaultTerms || fallbackCompany.defaultTerms,
+        defaultTerms: settings?.defaultTerms ?? "",
         defaultStationeryMode: settings?.defaultStationeryMode ?? false,
       },
-      unitTypes:
-        settings?.unitTypes && settings.unitTypes.length > 0
-          ? settings.unitTypes
-          : [...UNIT_TYPES],
+      unitTypes: settings?.unitTypes?.length ? settings.unitTypes : [],
       clients: clientRows.map((client) => ({
         id: client.id,
         name: client.name,
@@ -208,7 +154,7 @@ export async function getInvoiceStudioData(): Promise<InvoiceStudioData> {
       })),
     };
   } catch {
-    return fallbackStudio;
+    return emptyStudio();
   }
 }
 

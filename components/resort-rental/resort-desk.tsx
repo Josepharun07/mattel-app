@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import Link from "next/link";
 import { format } from "date-fns";
 import { AlertCircle, Building2, Calendar, DollarSign, KeyRound } from "lucide-react";
@@ -28,8 +29,8 @@ function mergeById<T extends { id: string }>(base: T[], extra: T[]) {
 
 export function ResortDesk({ initial }: { initial: ResortDirectory }) {
   const session = useSyncExternalStore(subscribeResortSession, readResortSession, serverResortSession);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "EXPIRED">("ALL");
+  const [query, setQuery] = usePageState("query", "");
+  const [statusFilter, setStatusFilter] = usePageState<"ALL" | "ACTIVE" | "EXPIRED">("status", "ALL");
   const [invoicing, setInvoicing] = useState<ResortLease | null>(null);
   const [notice, setNotice] = useState("");
   const today = format(new Date(), "yyyy-MM-dd");

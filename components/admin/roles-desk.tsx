@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { createRoleAction, deleteRoleAction } from "@/actions/staff-actions";
 import { PageFrame } from "@/components/shell/page-frame";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,8 @@ import { canAssignStaffRoles, type StaffDirectory } from "@/lib/staff/directory"
 export function RolesDesk({ directory, role }: { directory: StaffDirectory; role: AccessRole }) {
   const router = useRouter();
   const allowed = canAssignStaffRoles(role);
-  const [name, setName] = useState("");
-  const [notice, setNotice] = useState("");
+  const [name, setName] = usePageState("name", "");
+  const [notice, setNotice] = usePageState("notice", "");
 
   return (
     <PageFrame

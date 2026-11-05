@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BackButton } from "@/components/shell/back-button";
 import { cn } from "@/lib/utils";
 
 const widths = {
@@ -22,10 +23,13 @@ export function PageFrame({
 }) {
   return (
     <div className={cn("mx-auto flex w-full min-w-0 max-w-full flex-col gap-6 px-4 py-6 sm:px-6", widths[width])}>
-      <header className="min-w-0 space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-        {description ? <p className="max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
+      <header className="flex min-w-0 items-start gap-3">
+        <BackButton />
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+          {description ? <p className="max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
+        </div>
       </header>
       {children}
     </div>

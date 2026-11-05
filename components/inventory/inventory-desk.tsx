@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import {
@@ -27,12 +28,12 @@ import { formatInr } from "@/lib/money";
 
 export function InventoryDesk({ initialItems }: { initialItems: CatalogItem[] }) {
   const [items, setItems] = useState(initialItems);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
+  const [search, setSearch] = usePageState("search", "");
+  const [category, setCategory] = usePageState("category", "all");
   const [selected, setSelected] = useState<CatalogItem | null>(null);
   const [open, setOpen] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [draft, setDraft] = useState({ name: "", category: "Aggregates", unitType: "CFT", centralRate: "0", currentStock: "0", lowStockThreshold: "10" });
+  const [notice, setNotice] = usePageState("notice", "");
+  const [draft, setDraft] = usePageState("draft", { name: "", category: "Aggregates", unitType: "CFT", centralRate: "0", currentStock: "0", lowStockThreshold: "10" });
 
   const categories = useMemo(
     () => [...new Set(items.map((item) => item.category))],

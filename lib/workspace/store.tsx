@@ -21,7 +21,7 @@ import {
   type RoleColors,
 } from "@/lib/settings/appearance";
 
-const STORAGE_KEY = "mattel-infrastructures.workspace.v1";
+const STORAGE_KEY = "mattel-infrastructures.workspace.v2";
 
 export type SessionRole = AccessRole;
 export type PaymentMode = "UPI" | "Bank Transfer" | "Cash";
@@ -147,8 +147,8 @@ const defaultSettings: CompanySettings = {
   phone: "",
   email: "",
   gstin: "",
-  bankName: "State Bank of India",
-  accountName: "Mattel Infrastructures Operating Account",
+  bankName: "",
+  accountName: "",
   accountNumber: "",
   ifscCode: "",
   upiId: "",
@@ -176,117 +176,13 @@ function createSeed(): WorkspaceState {
     currentUserId: "user-operator",
     roleColors: { OPERATOR: "slate" },
     role: "OPERATOR",
-    inventory: [
-      {
-        id: "inv-aggregates",
-        itemName: "Quarry Aggregates",
-        unitType: "CFT",
-        standardUnitRate: 120,
-        currentStock: 40,
-        minSafetyThreshold: 50,
-        deletedAt: null,
-      },
-      {
-        id: "inv-msand",
-        itemName: "M-Sand",
-        unitType: "Loads",
-        standardUnitRate: 4500,
-        currentStock: 12,
-        minSafetyThreshold: 4,
-        deletedAt: null,
-      },
-      {
-        id: "inv-cement",
-        itemName: "OPC 53 Cement",
-        unitType: "Bags",
-        standardUnitRate: 420,
-        currentStock: 8,
-        minSafetyThreshold: 20,
-        deletedAt: null,
-      },
-      {
-        id: "inv-sand",
-        itemName: "River Sand",
-        unitType: "Tons",
-        standardUnitRate: 2800,
-        currentStock: 6,
-        minSafetyThreshold: 2,
-        deletedAt: null,
-      },
-    ],
-    assets: [
-      {
-        id: "asset-compactor",
-        assetName: "Plate compactor",
-        assetCode: "PC-12",
-        status: "Assigned",
-        deletedAt: null,
-      },
-      {
-        id: "asset-mixer",
-        assetName: "Concrete mixer",
-        assetCode: "CM-04",
-        status: "Available",
-        deletedAt: null,
-      },
-    ],
-    assignments: [
-      {
-        id: "assign-compactor",
-        assetId: "asset-compactor",
-        assigneeType: "EXTERNAL_RENTER",
-        employeeName: "",
-        externalName: "Kumar Rentals",
-        externalPhone: "9800000000",
-        externalIdDetails: "DL-042011",
-        issueDate: "2026-09-28",
-        expectedReturnDate: "2026-10-01",
-        actualReturnDate: "",
-      },
-    ],
-    workers: [
-      { id: "worker-ravi", name: "Ravi", dailyRate: 800, hourlyRate: 100 },
-      { id: "worker-suresh", name: "Suresh", dailyRate: 750, hourlyRate: 95 },
-    ],
-    attendance: [
-      {
-        id: "att-ravi-1",
-        workerId: "worker-ravi",
-        workDate: "2026-10-05",
-        mark: "FULL",
-        overtimeHours: 2,
-      },
-      {
-        id: "att-ravi-2",
-        workerId: "worker-ravi",
-        workDate: "2026-10-06",
-        mark: "HALF",
-        overtimeHours: 0,
-      },
-    ],
-    subcontracts: [
-      {
-        id: "sub-wall",
-        title: "Compound wall labour",
-        projectTitle: "Compound Wall & Yard Fill",
-        leadPersonType: "EXTERNAL_CONTRACTOR",
-        leadName: "Anil",
-        leadPhone: "9811111111",
-        teamMembers: ["Ravi", "Suresh"],
-        totalContractAmount: 150000,
-        deletedAt: null,
-      },
-    ],
-    draws: [
-      {
-        id: "draw-wall-1",
-        subcontractId: "sub-wall",
-        drawDate: "2026-10-02",
-        amountPaid: 20000,
-        paymentMode: "Bank Transfer",
-        notes: "First advance",
-      },
-    ],
+    inventory: [],
+    assets: [],
+    assignments: [],
+    workers: [],
+    attendance: [],
+    subcontracts: [],
+    draws: [],
     payments: [],
   };
 }

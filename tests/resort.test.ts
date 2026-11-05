@@ -6,7 +6,6 @@ import {
   resortPaymentStatus,
   resortRemainingBalance,
 } from "@/lib/engines/resort-engine";
-import { buildSampleResort, resortOutstanding } from "@/lib/resort/sample";
 
 describe("resort engine", () => {
   it("numbers resort invoices by calendar year and keeps the next sequence", () => {
@@ -22,13 +21,5 @@ describe("resort engine", () => {
     expect(isResortInvoiceOverdue("UNPAID", "2026-10-01", "2026-10-07")).toBe(true);
     expect(isResortInvoiceOverdue("UNPAID", "2026-10-07", "2026-10-07")).toBe(false);
     expect(isResortInvoiceOverdue("PAID", "2026-10-01", "2026-10-07")).toBe(false);
-  });
-
-  it("starts with one overdue October invoice and a paid September invoice", () => {
-    const directory = buildSampleResort(new Date(2026, 9, 7));
-    expect(directory.invoices.filter((row) => row.overdue)).toHaveLength(1);
-    expect(directory.invoices.find((row) => row.baseInvoiceNumber === "MI/RES/2026/0002")?.paymentStatus).toBe("PAID");
-    expect(resortOutstanding(directory.invoices)).toBe(25000);
-    expect(directory.leases.reduce((sum, lease) => sum + lease.monthlyRentAmount, 0)).toBe(43000);
   });
 });

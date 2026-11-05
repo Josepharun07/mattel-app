@@ -4,8 +4,8 @@ import * as schema from "../../db/schema";
 import { hashPassword } from "./passwords";
 
 export function adminCredentials() {
-  const username = (process.env.ADMIN_USERNAME || "admin@mattelinfra.com").trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD || "admin";
+  const username = process.env.ADMIN_USERNAME?.trim().toLowerCase() ?? "";
+  const password = process.env.ADMIN_PASSWORD ?? "";
   if (!username || !password) {
     throw new Error("ADMIN_USERNAME and ADMIN_PASSWORD must be set.");
   }

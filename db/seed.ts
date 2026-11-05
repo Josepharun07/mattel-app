@@ -7,13 +7,15 @@ import { ensureSuperAdmin } from "../lib/auth/ensure-admin";
 import { calculateInvoiceTotals } from "../lib/engines/invoice-engine";
 import { calculateStaffPayroll } from "../lib/engines/payroll-engine";
 import { seedRoles } from "../lib/staff/directory";
+import { defaultSystemSettings } from "../lib/settings/profile";
 import * as schema from "./schema";
 
 loadEnvFile();
 
-const databaseUrl =
-  process.env.DATABASE_URL ??
-  "postgresql://postgres:postgres@localhost:5432/mattel_infrastructures";
+const databaseUrl = process.env.DATABASE_URL ?? "";
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be set before seeding.");
+}
 
 function loadEnvFile() {
   for (const file of [".env", ".env.local"]) {
@@ -120,17 +122,11 @@ async function seed() {
     const [settings] = await db
       .insert(schema.systemSettings)
       .values({
-        companyName: "Mattel Infrastructures",
-        tagline: "Building Tomorrow's Foundation",
-        address: "Kerala, India",
-        phone: "+91 98765 43210",
-        email: "contact@mattelinfra.com",
-        bankName: "State Bank of India",
-        accountName: "Mattel Infrastructures Operating Account",
-        accountNumber: "40910029831",
-        ifscCode: "SBIN0001234",
-        unitTypes: ["Loads", "Bags", "CFT", "Tons", "Hours", "Days", "Trips"],
-        defaultTerms: "Payment due within 15 days of issue.",
+        ...defaultSystemSettings,
+        gstin: defaultSystemSettings.gstin || null,
+        upiId: defaultSystemSettings.upiId || null,
+        logoUrl: null,
+        signatureUrl: null,
       })
       .returning();
 

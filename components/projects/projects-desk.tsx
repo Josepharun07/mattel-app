@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { createProject, setProjectStatus } from "@/actions/backend-actions";
 import { PageFrame } from "@/components/shell/page-frame";
 import { Panel, Rows, Field } from "@/components/site/panel";
@@ -25,8 +26,8 @@ export function ProjectsDesk({
   projects: ProjectRow[];
 }) {
   const router = useRouter();
-  const [notice, setNotice] = useState("");
-  const [form, setForm] = useState({ clientId: clients[0]?.id ?? "", name: "", location: "" });
+  const [notice, setNotice] = usePageState("notice", "");
+  const [form, setForm] = usePageState("form", { clientId: clients[0]?.id ?? "", name: "", location: "" });
   const running = projects.filter((project) => project.status !== "COMPLETED");
   const finished = projects.filter((project) => project.status === "COMPLETED");
 

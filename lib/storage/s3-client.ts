@@ -1,5 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { readPresignSeconds } from "@/lib/env/company";
 import { createStorageClient, readStorageConfig } from "@/lib/storage/s3";
 
 export type BrandingFolder = "logos" | "signatures";
@@ -46,7 +47,7 @@ export async function getPresignedUploadUrl(fileName: string, fileType: string, 
 
   const client = createStorageClient(config);
   const key = brandingObjectKey(fileName, folder);
-  const expiresIn = 900;
+  const expiresIn = readPresignSeconds();
   const url = await getSignedUrl(
     client,
     new PutObjectCommand({

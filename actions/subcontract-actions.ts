@@ -16,8 +16,8 @@ import {
   type ContractStatus,
   type LeadPersonType,
 } from "@/lib/engines/subcontract-engine";
-import { buildSampleSubcontracts } from "@/lib/subcontracts/sample";
 import type { SubcontractDirectory, SubcontractDraw, SubcontractRecord, TeamMember } from "@/lib/subcontracts/types";
+import { emptySubcontracts } from "@/lib/subcontracts/types";
 import { roundMoney } from "@/lib/money";
 
 function money(amount: number) {
@@ -70,8 +70,7 @@ function summarize(input: Omit<SubcontractRecord, "totalAdvances" | "remainingBa
 
 export async function getSubcontracts(projectId?: string): Promise<SubcontractDirectory> {
   if (!process.env.DATABASE_URL) {
-    const sample = buildSampleSubcontracts();
-    return projectId ? { ...sample, contracts: sample.contracts.filter((row) => row.projectId === projectId) } : sample;
+    return projectId ? { ...emptySubcontracts(), contracts: [] } : emptySubcontracts();
   }
 
   try {
@@ -127,7 +126,7 @@ export async function getSubcontracts(projectId?: string): Promise<SubcontractDi
       projects: sites.map((site) => ({ id: site.id, name: site.name || site.title })),
     };
   } catch {
-    return buildSampleSubcontracts();
+    return emptySubcontracts();
   }
 }
 

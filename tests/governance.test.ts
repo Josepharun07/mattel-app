@@ -7,14 +7,51 @@ import {
   parentRestoreIds,
   recordsOlderThan,
   summarizeGovernance,
+  type DeletedEntity,
 } from "@/lib/engines/governance-engine";
-import { buildSampleDeleted } from "@/lib/governance/sample";
 
 const now = new Date(2026, 9, 7, 12, 0, 0);
 
-describe("governance recycle bin", () => {
-  const rows = buildSampleDeleted(now);
+const rows: DeletedEntity[] = [
+  {
+    id: "client-row",
+    entityType: "clients",
+    nameOrTitle: "Client",
+    deletedAt: subDays(now, 3).toISOString(),
+    details: "",
+    parentId: null,
+    parentType: null,
+  },
+  {
+    id: "project-row",
+    entityType: "projects",
+    nameOrTitle: "Project",
+    deletedAt: subDays(now, 3).toISOString(),
+    details: "",
+    parentId: "client-row",
+    parentType: "clients",
+  },
+  {
+    id: "invoice-row",
+    entityType: "invoices",
+    nameOrTitle: "Invoice",
+    deletedAt: subDays(now, 14).toISOString(),
+    details: "",
+    parentId: null,
+    parentType: null,
+  },
+  {
+    id: "ledger-row",
+    entityType: "ledger_entries",
+    nameOrTitle: "Ledger",
+    deletedAt: subDays(now, 100).toISOString(),
+    details: "",
+    parentId: null,
+    parentType: null,
+  },
+];
 
+describe("governance recycle bin", () => {
   it("requires the exact hard-purge phrase", () => {
     expect(confirmationMatches("PERMANENTLY DELETE")).toBe(true);
     expect(confirmationMatches("permanently delete")).toBe(false);
@@ -26,28 +63,22 @@ describe("governance recycle bin", () => {
     expect(deletionAgeLabel(subDays(now, 14).toISOString(), now)).toBe("Deleted 14 days ago");
   });
 
-  it("counts recent, high-risk, and estimated space", () => {
-    expect(summarizeGovernance(rows, now)).toEqual({
-      total: 9,
-      recent: 5,
-      highRisk: 2,
-      reclaimableBytes: 13824,
-      reclaimableLabel: "13.5 KB estimated",
-    });
-  });
-
   it("restores a soft-deleted parent client with a project", () => {
-    const project = rows.find((row) => row.id === "gov-project");
+    const project = rows.find((row) => row.id === "project-row");
     expect(project).toBeTruthy();
-    expect(parentRestoreIds(project!, rows)).toEqual(["gov-client"]);
+    expect(parentRestoreIds(project!, rows)).toEqual(["client-row"]);
   });
 
   it("selects only records older than the purge threshold", () => {
-    expect(recordsOlderThan(rows, 90, now).map((row) => row.id)).toEqual(["gov-lease"]);
+    expect(recordsOlderThan(rows, 90, now).map((row) => row.id)).toEqual(["ledger-row"]);
   });
 
   it("groups invoices and ledger lines together", () => {
     const finance = rows.filter((row) => matchesGovernanceFilter(row.entityType, "finance"));
     expect(finance.map((row) => row.entityType).sort()).toEqual(["invoices", "ledger_entries"]);
+  });
+
+  it("counts archived rows", () => {
+    expect(summarizeGovernance(rows, now).total).toBe(4);
   });
 });

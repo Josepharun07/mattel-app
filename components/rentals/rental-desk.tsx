@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import Link from "next/link";
 import { AlertTriangle, Calendar, FileText, Wrench } from "lucide-react";
 import { AssignAssetModal } from "@/components/rentals/assign-asset-modal";
@@ -16,8 +17,8 @@ import type { RentalAsset, RentalAssignment, RentalDirectory } from "@/lib/renta
 
 export function RentalDesk({ initial }: { initial: RentalDirectory }) {
   const session = useSyncExternalStore(subscribeRentalSession, readRentalSession, serverRentalSession);
-  const [query, setQuery] = useState("");
-  const [borrowerFilter, setBorrowerFilter] = useState<"ALL" | "INTERNAL_WORKER" | "EXTERNAL_RENTER" | "OVERDUE">("ALL");
+  const [query, setQuery] = usePageState("query", "");
+  const [borrowerFilter, setBorrowerFilter] = usePageState<"ALL" | "INTERNAL_WORKER" | "EXTERNAL_RENTER" | "OVERDUE">("filter", "ALL");
   const [issuing, setIssuing] = useState<RentalAsset | null>(null);
   const [returning, setReturning] = useState<RentalAsset | null>(null);
   const [notice, setNotice] = useState("");

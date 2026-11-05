@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { format, parseISO } from "date-fns";
 import { flexRender, type SortingState } from "@tanstack/react-table";
 import {
@@ -72,8 +73,8 @@ export function RecycleBinTable({ initial }: { initial: DeletedEntity[] }) {
     readGovernanceSession,
     serverGovernanceSession,
   );
-  const [filter, setFilter] = useState<GovernanceFilter>("all");
-  const [query, setQuery] = useState("");
+  const [filter, setFilter] = usePageState<GovernanceFilter>("filter", "all");
+  const [query, setQuery] = usePageState("query", "");
   const [sorting, setSorting] = useState<SortingState>([{ id: "deletedAt", desc: true }]);
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState("");

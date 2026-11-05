@@ -5,6 +5,7 @@ import { createInvoice, getNextInvoiceNumber, type InvoiceStudioData } from "@/a
 import { VersionBadge } from "@/components/documents/version-badge";
 import { documentVersion } from "@/lib/engines/invoice-engine";
 import { useWorkspace } from "@/lib/workspace/store";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { LineItemsGrid, type InvoiceLine } from "@/components/invoices/line-items-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,25 +87,25 @@ export function InvoiceStudioProvider({
 }) {
   const openingClient = data.clients[0];
   const openingProject = data.projects.find((project) => project.clientId === openingClient?.id);
-  const [clientId, setClientIdState] = useState(openingClient?.id || "");
-  const [projectId, setProjectId] = useState(openingProject?.id || "");
-  const [invoiceType, setInvoiceTypeState] = useState<"CON" | "RES">("CON");
-  const [invoiceNumber, setInvoiceNumber] = useState(initialInvoiceNumber);
-  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [transitPassNo, setTransitPassNo] = useState("");
-  const [ewayBillNo, setEwayBillNo] = useState("");
-  const [gstEnabled, setGstEnabled] = useState(true);
-  const [isInterstate, setInterstate] = useState(false);
-  const [terms, setTerms] = useState(data.company.defaultTerms || "Payment due within 15 days of issue.");
-  const [signatureUrl, setSignatureUrl] = useState<string | null>(data.company.signatureUrl);
-  const [lines, setLines] = useState<InvoiceLine[]>([openingLine(data)]);
+  const [clientId, setClientIdState] = usePageState("client", openingClient?.id || "");
+  const [projectId, setProjectId] = usePageState("project", openingProject?.id || "");
+  const [invoiceType, setInvoiceTypeState] = usePageState<"CON" | "RES">("series", "CON");
+  const [invoiceNumber, setInvoiceNumber] = usePageState("number", initialInvoiceNumber);
+  const [issueDate, setIssueDate] = usePageState("issued", () => new Date().toISOString().slice(0, 10));
+  const [transitPassNo, setTransitPassNo] = usePageState("transit", "");
+  const [ewayBillNo, setEwayBillNo] = usePageState("eway", "");
+  const [gstEnabled, setGstEnabled] = usePageState("gst", true);
+  const [isInterstate, setInterstate] = usePageState("interstate", false);
+  const [terms, setTerms] = usePageState("terms", data.company.defaultTerms || "Payment due within 15 days of issue.");
+  const [signatureUrl, setSignatureUrl] = usePageState<string | null>("signature", data.company.signatureUrl);
+  const [lines, setLines] = usePageState<InvoiceLine[]>("lines", [openingLine(data)]);
   const workspace = useWorkspace();
   const settingsStamp = [
     workspace.settings.defaultTerms,
     workspace.settings.signatureDataUrl ?? "",
     workspace.settings.unitTypes.join("|"),
   ].join("§");
-  const [seenSettings, setSeenSettings] = useState("");
+  const [seenSettings, setSeenSettings] = usePageState("settings-stamp", "");
   if (settingsStamp !== seenSettings) {
     setSeenSettings(settingsStamp);
     setTerms(workspace.settings.defaultTerms || data.company.defaultTerms);
@@ -127,21 +128,8 @@ export function InvoiceStudioProvider({
     unitTypes: workspace.settings.unitTypes.length > 0 ? workspace.settings.unitTypes : data.unitTypes,
     company: {
       ...data.company,
-      companyName: workspace.settings.companyName || data.company.companyName,
-      tagline: workspace.settings.tagline || data.company.tagline,
-      address: workspace.settings.address || data.company.address,
-      phone: workspace.settings.phone || data.company.phone,
-      email: workspace.settings.email || data.company.email,
-      gstin: workspace.settings.gstin || data.company.gstin,
-      bankName: workspace.settings.bankName || data.company.bankName,
-      accountName: workspace.settings.accountName || data.company.accountName,
-      accountNumber: workspace.settings.accountNumber || data.company.accountNumber,
-      ifscCode: workspace.settings.ifscCode || data.company.ifscCode,
-      upiId: workspace.settings.upiId || data.company.upiId,
       logoUrl: workspace.settings.logoDataUrl || data.company.logoUrl,
       signatureUrl: workspace.settings.signatureDataUrl || data.company.signatureUrl,
-      defaultTerms: workspace.settings.defaultTerms || data.company.defaultTerms,
-      defaultStationeryMode: workspace.settings.defaultStationeryMode,
     },
   };
 

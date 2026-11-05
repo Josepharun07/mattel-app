@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import Link from "next/link";
 import { format } from "date-fns";
 import { AlertCircle, Calendar, CheckCircle2, Clock, DollarSign, UserCheck } from "lucide-react";
@@ -41,8 +42,8 @@ type DeskState = {
 export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
   const session = useSyncExternalStore(subscribePayrollSession, readPayrollSession, serverPayrollSession);
   const [override, setOverride] = useState<DeskState | null>(null);
-  const [draftStart, setDraftStart] = useState(initial.periodStart);
-  const [draftEnd, setDraftEnd] = useState(initial.periodEnd);
+  const [draftStart, setDraftStart] = usePageState("start", initial.periodStart);
+  const [draftEnd, setDraftEnd] = usePageState("end", initial.periodEnd);
   const [checkoutStaff, setCheckoutStaff] = useState<StaffMember | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);

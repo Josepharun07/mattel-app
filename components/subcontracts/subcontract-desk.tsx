@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { Briefcase, DollarSign, PlusCircle, Users } from "lucide-react";
 import { CreateSubcontractModal } from "@/components/subcontracts/create-subcontract-modal";
 import { IssueDrawModal } from "@/components/subcontracts/issue-draw-modal";
@@ -31,8 +32,8 @@ function withTotals(contract: SubcontractRecord): SubcontractRecord {
 
 export function SubcontractDesk({ initial }: { initial: SubcontractDirectory }) {
   const session = useSyncExternalStore(subscribeSubcontractSession, readSubcontractSession, serverSubcontractSession);
-  const [query, setQuery] = useState("");
-  const [projectId, setProjectId] = useState("ALL");
+  const [query, setQuery] = usePageState("query", "");
+  const [projectId, setProjectId] = usePageState("project", "ALL");
   const [creating, setCreating] = useState(false);
   const [drawing, setDrawing] = useState<SubcontractRecord | null>(null);
   const [notice, setNotice] = useState("");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { useRouter } from "next/navigation";
 import { createPayment, reviewPayment } from "@/actions/operations-actions";
 import { PageFrame } from "@/components/shell/page-frame";
@@ -13,7 +13,7 @@ import { canApprove, type RaBill, type SiteBook } from "@/lib/site/book";
 
 function useNotice() {
   const router = useRouter();
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = usePageState("notice", "");
   return {
     notice,
     async report(result: Promise<{ ok: boolean; message?: string }>) {
@@ -26,7 +26,7 @@ function useNotice() {
 
 export function ApprovalsDesk({ book, role }: { book: SiteBook; role: AccessRole }) {
   const { notice, report } = useNotice();
-  const [payment, setPayment] = useState({ payee: "", amount: "0", purpose: "", costCode: "", requestedBy: "" });
+  const [payment, setPayment] = usePageState("payment", { payee: "", amount: "0", purpose: "", costCode: "", requestedBy: "" });
 
   return (
     <PageFrame eyebrow="Administration" title="Payment approvals" description="A payment stays pending until an owner or a super admin approves it.">

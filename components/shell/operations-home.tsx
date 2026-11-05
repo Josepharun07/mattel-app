@@ -3,19 +3,25 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FileText, HardHat, Package, Wallet } from "lucide-react";
-import { useWorkspace } from "@/lib/workspace/store";
 import { formatInr } from "@/lib/money";
 import { boqProgress, type SiteBook } from "@/lib/site/book";
+import { BackButton } from "@/components/shell/back-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function OperationsHome({ book, name }: { book: SiteBook; name: string }) {
-  const workspace = useWorkspace();
-  const today = new Date().toISOString().slice(0, 10);
+export function OperationsHome({
+  book,
+  name,
+  lowStock,
+  overdueTools,
+}: {
+  book: SiteBook;
+  name: string;
+  lowStock: number;
+  overdueTools: number;
+}) {
   const personName = name;
-  const lowStock = workspace.inventory.filter((item) => !item.deletedAt && item.currentStock <= item.minSafetyThreshold).length;
-  const overdueTools = workspace.assignments.filter((item) => !item.actualReturnDate && item.expectedReturnDate < today).length;
   const pending = book.payments.filter((payment) => payment.status === "PENDING");
   const payable = pending.reduce((sum, payment) => sum + payment.amount, 0);
   const contractValue = book.boq.reduce((sum, line) => sum + line.contractQty * line.rate, 0);
@@ -28,9 +34,12 @@ export function OperationsHome({ book, name }: { book: SiteBook; name: string })
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome back, {personName}</h1>
-          <p className="text-sm text-muted-foreground">Work, money, and people that need a look today.</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <BackButton />
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome back, {personName}</h1>
+            <p className="text-sm text-muted-foreground">Work, money, and people that need a look today.</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm">

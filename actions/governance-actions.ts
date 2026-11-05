@@ -18,12 +18,9 @@ import {
 import {
   confirmationMatches,
   isGovernanceEntityType,
-  parentRestoreIds,
-  recordsOlderThan,
   type DeletedEntity,
   type GovernanceEntityType,
 } from "@/lib/engines/governance-engine";
-import { buildSampleDeleted } from "@/lib/governance/sample";
 
 const originPaths: Record<GovernanceEntityType, string[]> = {
   clients: ["/"],
@@ -76,8 +73,7 @@ export async function getSoftDeletedEntities(entityTypeFilter?: string): Promise
 }> {
   const filter = entityTypeFilter && isGovernanceEntityType(entityTypeFilter) ? entityTypeFilter : null;
   if (!process.env.DATABASE_URL) {
-    const rows = buildSampleDeleted(new Date()).filter((item) => !filter || item.entityType === filter);
-    return { rows, offline: true };
+    return { rows: [], offline: true };
   }
 
   try {
@@ -125,8 +121,7 @@ export async function getSoftDeletedEntities(entityTypeFilter?: string): Promise
 
     return { rows: rows.filter((item) => !filter || item.entityType === filter), offline: false };
   } catch {
-    const rows = buildSampleDeleted(new Date()).filter((item) => !filter || item.entityType === filter);
-    return { rows, offline: true };
+    return { rows: [], offline: true };
   }
 }
 
@@ -135,16 +130,11 @@ export async function restoreEntity(entityType: string, id: string) {
     return { success: false as const, message: "Choose an archived record." };
   }
   if (!process.env.DATABASE_URL) {
-    const sample = buildSampleDeleted(new Date());
-    const target = sample.find((item) => item.id === id && item.entityType === entityType);
-    const parentIds = target ? parentRestoreIds(target, sample) : [];
     return {
       success: false as const,
       offline: true as const,
-      message: parentIds.length
-        ? "Record restored in this session. The parent client was restored with it."
-        : "Record restored in this session.",
-      parentIds,
+      message: "Connect PostgreSQL before restoring a record.",
+      parentIds: [] as string[],
     };
   }
   if (!z.uuid().safeParse(id).success) {
@@ -266,12 +256,11 @@ export async function purgeAllOldRecords(daysThreshold: number, confirmationText
     return { success: false as const, message: "Choose a threshold of at least one day." };
   }
   if (!process.env.DATABASE_URL) {
-    const ids = recordsOlderThan(buildSampleDeleted(new Date()), daysThreshold, new Date()).map((item) => item.id);
     return {
       success: false as const,
       offline: true as const,
-      message: `Removed ${ids.length} records older than ${daysThreshold} days from this session.`,
-      ids,
+      message: "Connect PostgreSQL before purging records.",
+      ids: [] as string[],
     };
   }
 

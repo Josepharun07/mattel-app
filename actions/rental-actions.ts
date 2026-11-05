@@ -14,8 +14,8 @@ import {
   validateBorrower,
   type BorrowerType,
 } from "@/lib/engines/rental-engine";
-import { buildSampleRentals } from "@/lib/rentals/sample";
 import type { RentalAssignment, RentalAsset, RentalDirectory } from "@/lib/rentals/types";
+import { emptyRentals } from "@/lib/rentals/types";
 
 function money(amount: number) {
   return amount.toFixed(2);
@@ -33,7 +33,7 @@ function dayValue(value: string | Date | null) {
 
 export async function getAssetCatalog(): Promise<RentalDirectory> {
   if (!process.env.DATABASE_URL) {
-    return buildSampleRentals();
+    return emptyRentals();
   }
   try {
     const [assetRows, assignmentRows, people, sites] = await Promise.all([
@@ -95,7 +95,7 @@ export async function getAssetCatalog(): Promise<RentalDirectory> {
       offline: false,
     };
   } catch {
-    return buildSampleRentals();
+    return emptyRentals();
   }
 }
 

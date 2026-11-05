@@ -4,19 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInAction } from "@/actions/auth-actions";
 import { BrandLogo } from "@/components/brand/logo";
-import { localAccountHints } from "@/lib/auth/local";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function SignIn({ adminUsername, adminPassword }: { adminUsername: string; adminPassword: string }) {
+export function SignIn() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [notice, setNotice] = useState("");
-  const hints = localAccountHints.map((account) =>
-    account.name === "Super admin" ? { ...account, username: adminUsername, password: adminPassword } : account,
-  );
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-[#F4F7FB] px-4">
@@ -51,13 +47,6 @@ export function SignIn({ adminUsername, adminPassword }: { adminUsername: string
           Sign in
         </Button>
         {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
-        <ul className="grid gap-1 text-xs text-muted-foreground">
-          {hints.map((account) => (
-            <li key={account.username}>
-              {account.name}: {account.username} / {account.password}
-            </li>
-          ))}
-        </ul>
       </form>
     </main>
   );

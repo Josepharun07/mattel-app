@@ -7,7 +7,6 @@ import {
   totalAdvancesDrawn,
   validateLead,
 } from "@/lib/engines/subcontract-engine";
-import { buildSampleSubcontracts } from "@/lib/subcontracts/sample";
 
 describe("subcontract engine", () => {
   it("subtracts advances from the lump sum and caps progress at 100", () => {
@@ -37,15 +36,5 @@ describe("subcontract engine", () => {
         externalLeadPhone: "9800000099",
       }).ok,
     ).toBe(true);
-  });
-
-  it("builds one completed contract and two open balances", () => {
-    const directory = buildSampleSubcontracts(new Date(2026, 9, 7));
-    const masonry = directory.contracts.find((row) => row.id === "sub-masonry");
-    const plaster = directory.contracts.find((row) => row.id === "sub-plaster");
-    expect(masonry?.remainingBalance).toBe(200000);
-    expect(masonry?.progress).toBe(20);
-    expect(plaster?.status).toBe("COMPLETED");
-    expect(directory.contracts.filter((row) => row.status === "ACTIVE")).toHaveLength(2);
   });
 });

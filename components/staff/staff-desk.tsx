@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePageState } from "@/lib/navigation/page-memory";
 import { assignRolesAction, saveStaffAction } from "@/actions/staff-actions";
 import { PageFrame } from "@/components/shell/page-frame";
 import { Button } from "@/components/ui/button";
@@ -45,10 +45,10 @@ export function StaffDesk({ directory, role }: { directory: StaffDirectory; role
   const router = useRouter();
   const allowed = canAssignStaffRoles(role);
   const people = directory.staff.filter((person) => !person.deletedAt);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState(emptyDraft);
-  const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [notice, setNotice] = useState("");
+  const [editingId, setEditingId] = usePageState<string | null>("editing", null);
+  const [draft, setDraft] = usePageState("draft", emptyDraft);
+  const [roleIds, setRoleIds] = usePageState<string[]>("roles", []);
+  const [notice, setNotice] = usePageState("notice", "");
 
   function openNew() {
     setEditingId("new");

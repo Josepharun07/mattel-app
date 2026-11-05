@@ -32,13 +32,6 @@ export type StockLogRow = {
   createdAt: string;
 };
 
-const fallbackItems: CatalogItem[] = [
-  { id: "item-msand", name: "M-Sand", category: "Aggregates", unitType: "CFT", centralRate: 45, currentStock: 1200, lowStockThreshold: 100, lowStock: false },
-  { id: "item-psand", name: "P-Sand", category: "Aggregates", unitType: "CFT", centralRate: 55, currentStock: 80, lowStockThreshold: 100, lowStock: true },
-  { id: "item-metal", name: "20mm Metal", category: "Aggregates", unitType: "CFT", centralRate: 42, currentStock: 1500, lowStockThreshold: 100, lowStock: false },
-  { id: "item-opc", name: "Ordinary Portland Cement (OPC)", category: "Binder", unitType: "Bags", centralRate: 380, currentStock: 40, lowStockThreshold: 50, lowStock: true },
-];
-
 const changeTypes = ["INBOUND_PURCHASE", "OUTBOUND_INVOICE", "MANUAL_CORRECTION", "RETURN"] as const;
 
 const createItemSchema = z.object({
@@ -79,7 +72,7 @@ function mapItem(item: {
 
 export async function getInventoryCatalog(search?: string, category?: string) {
   if (!process.env.DATABASE_URL) {
-    return filterCatalog(fallbackItems, search, category);
+    return [];
   }
 
   try {
@@ -98,17 +91,8 @@ export async function getInventoryCatalog(search?: string, category?: string) {
 
     return rows.map(mapItem);
   } catch {
-    return filterCatalog(fallbackItems, search, category);
+    return [];
   }
-}
-
-function filterCatalog(items: CatalogItem[], search?: string, category?: string) {
-  const query = search?.trim().toLowerCase();
-  return items.filter((item) => {
-    const matchesName = !query || item.name.toLowerCase().includes(query);
-    const matchesCategory = !category || item.category === category;
-    return matchesName && matchesCategory;
-  });
 }
 
 export async function getLowStockAlerts() {

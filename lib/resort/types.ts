@@ -50,3 +50,7 @@ export type ResortDirectory = {
   payments: ResortPayment[];
   offline: boolean;
 };
+
+export function emptyResort(): ResortDirectory {
+  return { leases: [], invoices: [], payments: [], offline: true };
+}

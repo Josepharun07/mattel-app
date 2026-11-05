@@ -51,10 +51,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </AccentRoot>
           </WorkspaceProvider>
         ) : (
-          <SignIn
-            adminUsername={process.env.ADMIN_USERNAME ?? "admin@mattelinfra.com"}
-            adminPassword={process.env.ADMIN_PASSWORD ?? "admin"}
-          />
+          <SignIn />
         )}
       </body>
     </html>
