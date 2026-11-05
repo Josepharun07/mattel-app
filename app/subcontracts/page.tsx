@@ -1,11 +1,15 @@
+import { gate } from "@/lib/auth/gate";
 import type { Metadata } from "next";
-import { getSubcontracts } from "@/actions/subcontract-actions";
-import { PageFrame } from "@/components/shell/page-frame";
-import { SubcontractDesk } from "@/components/subcontracts/subcontract-desk";
+import { getSubcontracts } from "@/controllers/subcontracts";
+import { PageFrame } from "@/views/shell/page-frame";
+import { SubcontractDesk } from "@/views/subcontracts/subcontract-desk";
 
 export const metadata: Metadata = { title: "Subcontracts" };
 
 export default async function SubcontractsPage() {
+  const denied = await gate("subcontracts.read");
+  if (denied) return denied;
+
   const directory = await getSubcontracts();
 
   return (

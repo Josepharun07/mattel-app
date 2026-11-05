@@ -170,6 +170,11 @@ async function seed() {
       ])
       .returning();
 
+    await db.insert(schema.projectClients).values([
+      { projectId: yard.id, clientId: abc.id },
+      { projectId: villa.id, clientId: coastal.id },
+    ]);
+
     const materials = await db
       .insert(schema.inventoryItems)
       .values([

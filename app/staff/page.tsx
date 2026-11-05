@@ -1,11 +1,16 @@
+import { gate } from "@/lib/auth/gate";
 import type { Metadata } from "next";
-import { getStaffDirectory } from "@/actions/staff-actions";
-import { StaffDesk } from "@/components/staff/staff-desk";
 import { getCurrentSession } from "@/lib/auth/current";
+import { allows } from "@/lib/auth/rbac";
+import { getStaffDirectory } from "@/controllers/staff";
+import { StaffDirectoryGrid } from "@/views/staff/staff-directory";
 
-export const metadata: Metadata = { title: "Staff" };
+export const metadata: Metadata = { title: "Employees" };
 
 export default async function StaffPage() {
+  const denied = await gate("staff.read");
+  if (denied) return denied;
+
   const session = await getCurrentSession();
-  return <StaffDesk directory={await getStaffDirectory()} role={session?.role ?? "OPERATOR"} />;
+  return <StaffDirectoryGrid directory={await getStaffDirectory()} canAdd={Boolean(session && allows(session, "staff.write"))} />;
 }

@@ -21,6 +21,35 @@ export function canGoBack() {
   return stack.length > 1;
 }
 
+export function backDestination(pathname: string) {
+  if (stack.length > 1 && stack[stack.length - 1] === pathname) {
+    return stack[stack.length - 2];
+  }
+  if (pathname === "/") {
+    return null;
+  }
+  if (pathname === "/invoices/create") {
+    return "/";
+  }
+  const parts = pathname.split("/").filter(Boolean);
+  parts.pop();
+  return parts.length ? `/${parts.join("/")}` : "/";
+}
+
+export function leavePage(pathname: string) {
+  const destination = backDestination(pathname);
+  if (!destination) {
+    return null;
+  }
+  if (stack.length > 1 && stack[stack.length - 1] === pathname && stack[stack.length - 2] === destination) {
+    stack = stack.slice(0, -1);
+  } else {
+    stack = [destination];
+  }
+  notify();
+  return destination;
+}
+
 export function noteNavigation(pathname: string) {
   const current = stack[stack.length - 1];
   if (current === pathname) {
@@ -48,6 +77,14 @@ export function recallScroll(pathname: string) {
 
 export function rememberScroll(pathname: string, top: number) {
   scrollMemory.set(pathname, top);
+}
+
+export function seedPageState(pathname: string, slot: string, value: unknown, identity: unknown = value) {
+  const key = `${pathname}::${slot}`;
+  const applied = `${pathname}::seed:${slot}`;
+  if (stateMemory.get(applied) === identity) return;
+  stateMemory.set(applied, identity);
+  stateMemory.set(key, value);
 }
 
 export function usePageState<T>(slot: string, initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>] {

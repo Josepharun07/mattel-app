@@ -1,4 +1,4 @@
-import type { StockLogRow } from "@/actions/inventory-actions";
+import type { StockLogRow } from "@/controllers/inventory";
 
 const storageKey = "mattel.inventory.stock-logs";
 

@@ -2,7 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
-import { appSessions, appUsers } from "@/db/schema";
+import { appSessions, appUsers, staff } from "@/db/schema";
+import { roleHasFullOffice } from "@/lib/auth/pages";
 import type { AccessRole } from "@/lib/settings/appearance";
 
 export type CurrentSession = {
@@ -11,6 +12,8 @@ export type CurrentSession = {
   name: string;
   kind: "staff" | "vendor" | "client";
   role: AccessRole | null;
+  staffId: string | null;
+  pages: "all" | string[];
 };
 
 const cookieName = "mattel_session";
@@ -36,6 +39,7 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
       name: appUsers.displayName,
       kind: appUsers.kind,
       role: appUsers.accessRole,
+      staffId: appUsers.staffId,
     })
     .from(appSessions)
     .innerJoin(appUsers, eq(appUsers.id, appSessions.userId))
@@ -45,7 +49,22 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
     return null;
   }
   const role = row.role === "OPERATOR" || row.role === "MANAGER" || row.role === "OWNER" || row.role === "SUPER_ADMIN" ? row.role : null;
-  return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role };
+  if (role === "OWNER" || role === "SUPER_ADMIN") {
+    return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId: row.staffId, pages: "all" };
+  }
+  let pages: string[] = [];
+  if (row.staffId) {
+    const [person] = await db
+      .select({ accountRole: staff.accountRole, pageAccess: staff.pageAccess })
+      .from(staff)
+      .where(eq(staff.id, row.staffId))
+      .limit(1);
+    if (person && roleHasFullOffice(person.accountRole)) {
+      return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId: row.staffId, pages: "all" };
+    }
+    pages = person?.pageAccess ?? [];
+  }
+  return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId: row.staffId, pages };
 }
 
 export async function startSession(userId: string) {

@@ -72,7 +72,7 @@ function firstOpen(roleColors: RoleColors, avoid?: AccentId): AccentId {
 
 export function chooseOwnAccent(user: AppearanceUser, roleColors: RoleColors, colorId: AccentId) {
   if (!canChooseAccent(user)) {
-    return { ok: false as const, message: "A super admin controls this colour." };
+    return { ok: false as const, message: "An owner controls this colour." };
   }
   if (reservedAccentIds(roleColors).includes(colorId)) {
     return { ok: false as const, message: "That colour is reserved for a low-level role." };

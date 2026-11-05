@@ -1,14 +1,20 @@
+import { gate } from "@/lib/auth/gate";
 import type { Metadata } from "next";
-import { getSoftDeletedEntities } from "@/actions/governance-actions";
-import { RecycleBinTable } from "@/components/settings/recycle-bin-table";
-import { PageFrame } from "@/components/shell/page-frame";
+import { getCurrentSession } from "@/lib/auth/current";
+import { allows } from "@/lib/auth/rbac";
+import { getSoftDeletedEntities } from "@/controllers/governance";
+import { RecycleBinTable } from "@/views/settings/recycle-bin-table";
+import { PageFrame } from "@/views/shell/page-frame";
 
 export const metadata: Metadata = {
   title: "Recycle Bin",
 };
 
 export default async function RecycleBinPage() {
-  const bin = await getSoftDeletedEntities();
+  const denied = await gate("recycle.read");
+  if (denied) return denied;
+
+  const [bin, session] = await Promise.all([getSoftDeletedEntities(), getCurrentSession()]);
 
   return (
     <PageFrame
@@ -18,10 +24,10 @@ export default async function RecycleBinPage() {
     >
       {bin.offline ? (
         <p className="rounded-lg border bg-white px-3 py-2 text-sm text-muted-foreground">
-          Showing archived sample records in this browser until PostgreSQL is connected.
+          PostgreSQL is not connected, so the recycle bin is empty.
         </p>
       ) : null}
-      <RecycleBinTable initial={bin.rows} />
+      <RecycleBinTable initial={bin.rows} canPurge={Boolean(session && allows(session, "recycle.purge"))} />
     </PageFrame>
   );
 }

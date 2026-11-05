@@ -33,6 +33,9 @@ export type StaffRecord = {
   bloodGroup: string;
   notes: string;
   roleIds: string[];
+  accountRole?: string;
+  pageAccess?: string[];
+  active?: boolean;
   deletedAt: string | null;
 };
 
@@ -95,6 +98,8 @@ export function seedDirectory(): StaffDirectory {
         bloodGroup: "",
         notes: "",
         roleIds: supervisor ? [supervisor.id] : [],
+        accountRole: "STAFF",
+        pageAccess: [],
         deletedAt: null,
       },
       {
@@ -118,6 +123,8 @@ export function seedDirectory(): StaffDirectory {
         bloodGroup: "",
         notes: "",
         roleIds: driver ? [driver.id] : [],
+        accountRole: "DRIVER",
+        pageAccess: [],
         deletedAt: null,
       },
     ],
@@ -211,6 +218,8 @@ export function saveStaffMember(directory: StaffDirectory, draft: StaffDraft, id
     id: existing?.id ?? id ?? crypto.randomUUID(),
     ...checked.value,
     roleIds: existing?.roleIds ?? [],
+    accountRole: existing?.accountRole ?? "STAFF",
+    pageAccess: existing?.pageAccess ?? [],
     deletedAt: null,
   };
   const staff = existing

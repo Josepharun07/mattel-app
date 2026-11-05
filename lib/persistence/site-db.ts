@@ -1,6 +1,6 @@
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
-import { boqItems, budgetLines, equipmentLogs, paymentRequests, raBills } from "@/db/schema";
+import { equipmentLogs, paymentRequests, raBills } from "@/db/schema";
 import type { SiteBook } from "@/lib/site/book";
 
 function money(value: number) {
@@ -12,26 +12,15 @@ function num(value: string | null) {
 }
 
 export async function loadSiteBook(): Promise<SiteBook> {
-  const [boq, bills, equipment, budget, payments] = await Promise.all([
-    db.select().from(boqItems),
+  const [bills, equipment, payments] = await Promise.all([
     db.select().from(raBills).orderBy(desc(raBills.issuedOn)),
     db.select().from(equipmentLogs).orderBy(desc(equipmentLogs.logDate)),
-    db.select().from(budgetLines),
     db.select().from(paymentRequests),
   ]);
 
   return {
     diary: [],
-    boq: boq.map((row) => ({
-      id: row.id,
-      section: row.section,
-      costCode: row.costCode,
-      description: row.description,
-      unit: row.unit,
-      contractQty: num(row.contractQty),
-      rate: num(row.rate),
-      executedQty: num(row.executedQty),
-    })),
+    boq: [],
     raBills: bills.map((row) => ({
       id: row.id,
       billNumber: row.billNumber,
@@ -65,14 +54,7 @@ export async function loadSiteBook(): Promise<SiteBook> {
       hireRate: num(row.hireRate),
       breakdown: row.breakdown,
     })),
-    budget: budget.map((row) => ({
-      id: row.id,
-      costCode: row.costCode,
-      name: row.name,
-      budgetAmount: num(row.budgetAmount),
-      committedAmount: num(row.committedAmount),
-      actualAmount: num(row.actualAmount),
-    })),
+    budget: [],
     drawings: [],
     rfis: [],
     submittals: [],
@@ -95,21 +77,9 @@ export async function loadSiteBook(): Promise<SiteBook> {
 export async function persistSiteBook(book: SiteBook) {
   await db.transaction(async (tx) => {
     await tx.delete(raBills);
-    await tx.delete(boqItems);
     await tx.delete(equipmentLogs);
-    await tx.delete(budgetLines);
     await tx.delete(paymentRequests);
 
-    if (book.boq.length) {
-      await tx.insert(boqItems).values(
-        book.boq.map((row) => ({
-          ...row,
-          contractQty: money(row.contractQty),
-          rate: money(row.rate),
-          executedQty: money(row.executedQty),
-        })),
-      );
-    }
     if (book.raBills.length) {
       await tx.insert(raBills).values(
         book.raBills.map((row) => ({
@@ -136,16 +106,6 @@ export async function persistSiteBook(book: SiteBook) {
           hireRate: money(row.hireRate),
           openingReading: money(row.openingReading),
           closingReading: money(row.closingReading),
-        })),
-      );
-    }
-    if (book.budget.length) {
-      await tx.insert(budgetLines).values(
-        book.budget.map((row) => ({
-          ...row,
-          budgetAmount: money(row.budgetAmount),
-          committedAmount: money(row.committedAmount),
-          actualAmount: money(row.actualAmount),
         })),
       );
     }

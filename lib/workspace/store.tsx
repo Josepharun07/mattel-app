@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { isoDate } from "@/lib/dates";
+import { isOfficeRole } from "@/lib/auth/rbac";
 import {
   assignMemberAccent,
   assignRoleAccent,
@@ -365,7 +366,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       setOperatorColor(colorId) {
         update((current) => {
-          if (current.role !== "SUPER_ADMIN") {
+          if (!isOfficeRole(current.role)) {
             return current;
           }
           const settled = assignRoleAccent(current.users, current.roleColors, colorId);
@@ -375,7 +376,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       setMemberColor(userId, colorId) {
         update((current) => {
-          if (current.role !== "SUPER_ADMIN") {
+          if (!isOfficeRole(current.role)) {
             return current;
           }
           return {
@@ -388,7 +389,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       setMemberCanEdit(userId, canEditColor) {
         update((current) => {
-          if (current.role !== "SUPER_ADMIN") {
+          if (!isOfficeRole(current.role)) {
             return current;
           }
           return {
@@ -549,11 +550,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         });
       },
       purgeRecord(table, id) {
-        if (state.role !== "SUPER_ADMIN") {
+        if (!isOfficeRole(state.role)) {
           return false;
         }
         update((current) => {
-          if (current.role !== "SUPER_ADMIN") {
+          if (!isOfficeRole(current.role)) {
             return current;
           }
           if (table === "central_inventory") {

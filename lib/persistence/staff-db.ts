@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { jobRoles, staff, staffPhones, staffRoleAssignments } from "@/db/schema";
+import { employeeRoleLabel, isEmployeeRole, roleHasFullOffice, allPageGrants } from "@/lib/auth/pages";
 import type { StaffDirectory, StaffRecord } from "@/lib/staff/directory";
 
 function money(value: number) {
@@ -39,6 +40,9 @@ export async function loadStaffDirectory(): Promise<StaffDirectory> {
       bloodGroup: person.bloodGroup,
       notes: person.notes,
       roleIds: links.filter((link) => link.staffId === person.id).map((link) => link.roleId),
+      accountRole: person.accountRole,
+      pageAccess: person.pageAccess ?? [],
+      active: person.active,
       deletedAt: person.deletedAt ? person.deletedAt.toISOString() : null,
     })),
   };
@@ -47,7 +51,6 @@ export async function loadStaffDirectory(): Promise<StaffDirectory> {
 export async function upsertStaff(record: StaffRecord) {
   const values = {
     fullName: record.fullName,
-    role: record.roleIds.length ? record.roleIds.join(",") : "Unassigned",
     hourlyRate: money(record.hourlyRate),
     dailyBaseRate: money(record.dailyBaseRate),
     address: record.address,
@@ -64,6 +67,10 @@ export async function upsertStaff(record: StaffRecord) {
     joiningDate: record.joiningDate || null,
     bloodGroup: record.bloodGroup,
     notes: record.notes,
+    role: employeeRoleLabel(record.accountRole || "STAFF"),
+    accountRole: isEmployeeRole(record.accountRole ?? "") ? record.accountRole : "STAFF",
+    pageAccess: roleHasFullOffice(record.accountRole ?? "") ? [...allPageGrants] : record.pageAccess ?? [],
+    active: record.active !== false,
   };
   const [existing] = await db.select({ id: staff.id }).from(staff).where(eq(staff.id, record.id)).limit(1);
   if (existing) {

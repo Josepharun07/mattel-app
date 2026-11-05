@@ -63,6 +63,7 @@ export const clients = pgTable("clients", {
   phone: text("phone").notNull().default(""),
   address: text("address"),
   gstin: text("gstin"),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
@@ -76,8 +77,36 @@ export const projects = pgTable("projects", {
   title: text("title").notNull(),
   location: text("location"),
   status: text("status").notNull().default("ACTIVE"),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const projectClients = pgTable(
+  "project_clients",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.clientId] })],
+);
+
+export const projectEntries = pgTable("project_entries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  enteredAt: timestamp("entered_at", { withTimezone: true }).defaultNow().notNull(),
+  item: text("item").notNull(),
+  description: text("description").notNull().default(""),
+  quantity: numeric("quantity", money).notNull().default("0.00"),
+  unitPrice: numeric("unit_price", money).notNull().default("0.00"),
+  invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const centralInventory = pgTable("central_inventory", {
@@ -310,6 +339,9 @@ export const staff = pgTable("staff", {
   joiningDate: date("joining_date"),
   bloodGroup: text("blood_group").notNull().default(""),
   notes: text("notes").notNull().default(""),
+  accountRole: text("account_role").notNull().default("STAFF"),
+  pageAccess: text("page_access").array().notNull().default([]),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
@@ -458,6 +490,8 @@ export const appUsers = pgTable("app_users", {
   kind: text("kind").notNull(),
   displayName: text("display_name").notNull(),
   accessRole: text("access_role"),
+  staffId: uuid("staff_id").references(() => staff.id, { onDelete: "set null" }),
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -468,6 +502,29 @@ export const appSessions = pgTable("app_sessions", {
     .references(() => appUsers.id, { onDelete: "cascade" })
     .notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+export const passwordResets = pgTable("password_resets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => appUsers.id, { onDelete: "cascade" })
+    .notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const profileChangeRequests = pgTable("profile_change_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id")
+    .references(() => staff.id, { onDelete: "cascade" })
+    .notNull(),
+  payload: jsonb("payload").notNull(),
+  status: text("status").notNull().default("PENDING"),
+  submittedBy: uuid("submitted_by").references(() => appUsers.id, { onDelete: "set null" }),
+  reviewedBy: uuid("reviewed_by").references(() => appUsers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
 });
 
 export const jobRoles = pgTable("job_roles", {

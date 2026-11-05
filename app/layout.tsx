@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
-import { SignIn } from "@/components/auth/sign-in";
-import { AccentRoot } from "@/components/shell/accent-root";
-import { AppShell } from "@/components/shell/AppShell";
-import { getPortalData } from "@/actions/operations-actions";
+import { SignIn } from "@/views/auth/sign-in";
+import { AccentRoot } from "@/views/shell/accent-root";
+import { AppShell } from "@/views/shell/AppShell";
+import { getPortalData } from "@/controllers/operations";
 import { getCurrentSession } from "@/lib/auth/current";
 import { WorkspaceProvider } from "@/lib/workspace/store";
 import "./globals.css";

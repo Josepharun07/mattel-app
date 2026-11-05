@@ -106,6 +106,41 @@
       "when": 1792710000000,
       "tag": "0014_industry_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792720000000,
+      "tag": "0015_project_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792730000000,
+      "tag": "0016_employee_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792740000000,
+      "tag": "0017_account_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792750000000,
+      "tag": "0018_project_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792760000000,
+      "tag": "0019_project_entry_invoice",
+      "breakpoints": true
     }
   ]
 }
