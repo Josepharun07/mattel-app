@@ -20,17 +20,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[min(24rem,calc(100%-2rem))] flex-col gap-2">
+      <div className="pointer-events-none fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex w-[min(24rem,calc(100%-2rem))] flex-col gap-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             role="status"
-            className={`pointer-events-auto flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-sm shadow-lg ${toast.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
+            className={`pointer-events-auto flex items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground shadow-paper ${toast.ok ? "border-l-4 border-l-[#1f6b45]" : "border-l-4 border-l-destructive"}`}
           >
-            <p>{toast.message}</p>
+            <p className="text-pretty">
+              <span className={`mr-2 inline-block size-2 translate-y-[-1px] rounded-full ${toast.ok ? "bg-[#30d158]" : "bg-[#ff453a]"}`} aria-hidden />
+              {toast.message}
+            </p>
             <button
               type="button"
-              className="shrink-0 rounded-md p-0.5 hover:bg-black/5"
+              className="shrink-0 rounded-lg p-1 text-muted-foreground hover:text-foreground"
               aria-label="Dismiss"
               onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
             >

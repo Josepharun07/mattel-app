@@ -5,8 +5,8 @@ import { allowed } from "@/lib/auth/access";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { appUsers, jobRoles } from "@/db/schema";
-import { allPageGrants, isEmployeeRole, roleHasFullOffice } from "@/lib/auth/pages";
+import { accessRoles, appUsers, jobRoles } from "@/db/schema";
+import { legacyAccountRole, loginAccessRole } from "@/lib/auth/access-roles";
 import { getCurrentSession } from "@/lib/auth/current";
 import { loadStaffDirectory, replaceStaffRoles, upsertStaff } from "@/lib/persistence/staff-db";
 import {
@@ -57,9 +57,10 @@ export async function saveStaffAction(draft: StaffDraft, id?: string, inform?: b
   if (!result.ok) {
     return result;
   }
-  const requested = draft.accountRole ?? "";
-  const accountRole = isEmployeeRole(requested) ? requested : "STAFF";
-  const pageAccess = roleHasFullOffice(accountRole) ? [...allPageGrants] : [...new Set(draft.pageAccess ?? [])];
+  if (!draft.accessRoleId) return { ok: false as const, message: "Choose a role." };
+  const [assigned] = await db.select().from(accessRoles).where(eq(accessRoles.id, draft.accessRoleId)).limit(1);
+  if (!assigned || assigned.deletedAt) return { ok: false as const, message: "Choose a role from the list." };
+  const accountRole = legacyAccountRole(assigned.slug);
   let publicCode = result.record.publicCode?.trim().toUpperCase() ?? "";
   if (!id) {
     const { allocatePublicCode } = await import("@/lib/records/public-code");
@@ -74,10 +75,12 @@ export async function saveStaffAction(draft: StaffDraft, id?: string, inform?: b
     ...result.record,
     publicCode,
     accountRole,
-    pageAccess,
+    pageAccess: assigned.pages ?? [],
+    accessRoleId: assigned.id,
+    accessRoleName: assigned.name,
   });
   if (result.record.email) {
-    const accessRole = accountRole === "OWNER" ? "OWNER" : accountRole === "SUPER_USER" ? "SUPER_ADMIN" : "MANAGER";
+    const accessRole = loginAccessRole(assigned.slug);
     await db
       .update(appUsers)
       .set({ staffId: result.record.id, accessRole })

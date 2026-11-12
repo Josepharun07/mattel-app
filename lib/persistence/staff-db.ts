@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { jobRoles, staff, staffPhones, staffRoleAssignments } from "@/db/schema";
-import { employeeRoleLabel, isEmployeeRole, roleHasFullOffice, allPageGrants } from "@/lib/auth/pages";
+import { accessRoles, jobRoles, staff, staffPhones, staffRoleAssignments } from "@/db/schema";
+import { isEmployeeRole } from "@/lib/auth/pages";
 import type { StaffDirectory, StaffRecord } from "@/lib/staff/directory";
 
 function money(value: number) {
@@ -9,12 +9,14 @@ function money(value: number) {
 }
 
 export async function loadStaffDirectory(): Promise<StaffDirectory> {
-  const [roles, people, phones, links] = await Promise.all([
+  const [roles, people, phones, links, access] = await Promise.all([
     db.select().from(jobRoles),
     db.select().from(staff),
     db.select().from(staffPhones),
     db.select().from(staffRoleAssignments),
+    db.select({ id: accessRoles.id, name: accessRoles.name }).from(accessRoles),
   ]);
+  const accessName = new Map(access.map((role) => [role.id, role.name]));
   return {
     roles: roles.map((role) => ({ id: role.id, name: role.name, builtIn: role.builtIn })),
     staff: people.map((person) => ({
@@ -43,6 +45,8 @@ export async function loadStaffDirectory(): Promise<StaffDirectory> {
       roleIds: links.filter((link) => link.staffId === person.id).map((link) => link.roleId),
       accountRole: person.accountRole,
       pageAccess: person.pageAccess ?? [],
+      accessRoleId: person.accessRoleId ?? "",
+      accessRoleName: person.accessRoleId ? accessName.get(person.accessRoleId) ?? "" : "",
       active: person.active,
       deletedAt: person.deletedAt ? person.deletedAt.toISOString() : null,
     })),
@@ -69,9 +73,10 @@ export async function upsertStaff(record: StaffRecord) {
     joiningDate: record.joiningDate || null,
     bloodGroup: record.bloodGroup,
     notes: record.notes,
-    role: employeeRoleLabel(record.accountRole || "STAFF"),
+    role: record.accessRoleName || "Unassigned",
     accountRole: isEmployeeRole(record.accountRole ?? "") ? record.accountRole : "STAFF",
-    pageAccess: roleHasFullOffice(record.accountRole ?? "") ? [...allPageGrants] : record.pageAccess ?? [],
+    pageAccess: record.pageAccess ?? [],
+    accessRoleId: record.accessRoleId || null,
     active: record.active !== false,
   };
   const [existing] = await db.select({ id: staff.id }).from(staff).where(eq(staff.id, record.id)).limit(1);

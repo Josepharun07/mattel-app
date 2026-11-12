@@ -21,6 +21,7 @@ export const officePages = [
   { id: "resort", label: "Resort", group: "Work" },
   { id: "equipment", label: "Equipment", group: "Work" },
   { id: "employees", label: "Employees", group: "People" },
+  { id: "roles", label: "Roles", group: "Administration" },
   { id: "approvals", label: "Approvals", group: "Administration" },
   { id: "recycle", label: "Recycle bin", group: "System" },
 ] as const;
@@ -67,7 +68,8 @@ export function pageForPermission(permission: string) {
   if (permission.startsWith("subcontracts.")) return "subcontracts";
   if (permission.startsWith("resort.")) return "resort";
   if (permission.startsWith("site.")) return "equipment";
-  if (permission.startsWith("staff.") || permission === "roles.manage") return "employees";
+  if (permission === "roles.manage") return "roles";
+  if (permission.startsWith("staff.")) return "employees";
   if (permission.startsWith("approvals.")) return "approvals";
   if (permission.startsWith("recycle.")) return "recycle";
   return null;

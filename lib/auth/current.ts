@@ -2,9 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
-import { appSessions, appUsers, staff } from "@/db/schema";
+import { accessRoles, appSessions, appUsers, staff } from "@/db/schema";
 import { attachStaffProfile } from "@/lib/auth/ensure-admin";
-import { roleHasFullOffice } from "@/lib/auth/pages";
 import type { AccessRole } from "@/lib/settings/appearance";
 
 export type CurrentSession = {
@@ -51,21 +50,17 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
   }
   const role = row.role === "OPERATOR" || row.role === "MANAGER" || row.role === "OWNER" || row.role === "SUPER_ADMIN" ? row.role : null;
   const staffId = await attachStaffProfile(db, { id: row.userId, username: row.username, name: row.name, role, staffId: row.staffId });
-  if (role === "OWNER" || role === "SUPER_ADMIN") {
-    return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId, pages: "all" };
-  }
   let pages: string[] = [];
   if (staffId) {
     const [person] = await db
-      .select({ accountRole: staff.accountRole, pageAccess: staff.pageAccess })
+      .select({ pages: accessRoles.pages })
       .from(staff)
+      .leftJoin(accessRoles, eq(accessRoles.id, staff.accessRoleId))
       .where(eq(staff.id, staffId))
       .limit(1);
-    if (person && roleHasFullOffice(person.accountRole)) {
-      return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId, pages: "all" };
-    }
-    pages = person?.pageAccess ?? [];
+    pages = person?.pages ?? [];
   }
+  if (role === "SUPER_ADMIN" && !pages.includes("roles")) pages = [...pages, "roles"];
   return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId, pages };
 }
 

@@ -17,6 +17,8 @@ describe("role access", () => {
   it("matches a path to the screen permission", () => {
     expect(permissionForPath("/settings/recycle-bin")).toBe("recycle.read");
     expect(permissionForPath("/settings")).toBe("settings.read");
+    expect(permissionForPath("/roles")).toBe("roles.manage");
+    expect(permissionForPath("/roles/abc")).toBe("roles.manage");
     expect(permissionForPath("/payroll/settlements")).toBe("payroll.read");
     expect(permissionForPath("/")).toBe("dashboard.view");
   });

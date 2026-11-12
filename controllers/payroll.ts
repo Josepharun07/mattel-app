@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { and, desc, eq, gte, isNull, lt, lte } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { attendanceLogs, payrollSettlements, staff, staffAdvances } from "@/db/schema";
+import { accessRoles, attendanceLogs, payrollSettlements, staff, staffAdvances } from "@/db/schema";
+import { payrollExemptSlugs } from "@/lib/auth/access-roles";
 import { applyPayslipVersionSuffix, recalculateSettlement } from "@/lib/engines/payroll-engine";
 import { sendPayslipEmail } from "@/lib/mail/payslip";
 import { dateKey, noonUtc, writeAccountSettlement, writeSettlement } from "@/lib/payroll/ledger";
@@ -180,9 +181,22 @@ function mapAttendance(log: {
   };
 }
 
+function onPayroll(slug: string | null) {
+  return !slug || !payrollExemptSlugs.has(slug);
+}
+
+async function payablePeople() {
+  const rows = await db
+    .select({ person: staff, slug: accessRoles.slug })
+    .from(staff)
+    .leftJoin(accessRoles, eq(accessRoles.id, staff.accessRoleId))
+    .where(isNull(staff.deletedAt));
+  return rows.filter((row) => onPayroll(row.slug)).map((row) => row.person);
+}
+
 async function loadDashboard(startDate: string, endDate: string): Promise<PayrollDashboard> {
   const [people, logs, earlier, settlements, advances] = await Promise.all([
-    db.select().from(staff).where(isNull(staff.deletedAt)),
+    payablePeople(),
     db
       .select()
       .from(attendanceLogs)
@@ -224,7 +238,7 @@ async function loadDashboard(startDate: string, endDate: string): Promise<Payrol
     periodStart: startDate,
     periodEnd: endDate,
     offline: false,
-    staff: people.filter((person) => person.accountRole !== "OWNER" && person.accountRole !== "SUPER_USER").map((person) => ({
+    staff: people.map((person) => ({
       id: person.id,
       fullName: person.fullName,
       role: person.role,
@@ -454,9 +468,9 @@ export async function executeWeeklyPayrollCycle(periodEnd: string): Promise<Payr
   }
 
   try {
-    const people = await db.select().from(staff).where(isNull(staff.deletedAt));
+    const people = await payablePeople();
     const applied: { settlement: SettlementRow; settledLogIds: string[] }[] = [];
-    for (const person of people.filter((row) => row.accountRole !== "OWNER" && row.accountRole !== "SUPER_USER")) {
+    for (const person of people) {
       const result = await db.transaction((tx) =>
         writeSettlement(tx, {
           staffId: person.id,

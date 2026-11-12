@@ -322,6 +322,16 @@ export const assetRentals = pgTable("asset_rentals", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
+export const accessRoles = pgTable("access_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  slug: text("slug").notNull().unique(),
+  pages: text("pages").array().notNull().default([]),
+  builtIn: boolean("built_in").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
 export const staff = pgTable("staff", {
   id: uuid("id").primaryKey().defaultRandom(),
   fullName: text("full_name").notNull(),
@@ -345,6 +355,7 @@ export const staff = pgTable("staff", {
   notes: text("notes").notNull().default(""),
   accountRole: text("account_role").notNull().default("STAFF"),
   pageAccess: text("page_access").array().notNull().default([]),
+  accessRoleId: uuid("access_role_id").references(() => accessRoles.id, { onDelete: "set null" }),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

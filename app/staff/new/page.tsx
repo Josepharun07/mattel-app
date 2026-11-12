@@ -1,6 +1,7 @@
 import { gate } from "@/lib/auth/gate";
 import type { Metadata } from "next";
 import { getStaffDirectory } from "@/controllers/staff";
+import { listAccessRoles } from "@/models/access-roles";
 import { StaffEditor } from "@/views/staff/staff-editor";
 import { getCurrentSession } from "@/lib/auth/current";
 
@@ -11,5 +12,5 @@ export default async function NewStaffPage() {
   if (denied) return denied;
 
   const session = await getCurrentSession();
-  return <StaffEditor directory={await getStaffDirectory()} role={session?.role ?? "OPERATOR"} canEdit />;
+  return <StaffEditor directory={await getStaffDirectory()} role={session?.role ?? "OPERATOR"} canEdit accessRoles={await listAccessRoles()} />;
 }

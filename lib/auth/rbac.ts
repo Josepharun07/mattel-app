@@ -79,6 +79,7 @@ export function isOfficeRole(role: AccessRole) {
 const routePermissions: { prefix: string; permission: Permission }[] = [
   { prefix: "/settings/recycle-bin", permission: "recycle.read" },
   { prefix: "/admin/roles", permission: "roles.manage" },
+  { prefix: "/roles", permission: "roles.manage" },
   { prefix: "/approvals", permission: "approvals.review" },
   { prefix: "/settings", permission: "settings.read" },
   { prefix: "/staff", permission: "staff.read" },
@@ -106,9 +107,6 @@ export function allows(session: Pick<CurrentSession, "kind" | "role" | "pages">,
   }
   if (!session.pages) {
     return roleAllows(session.role, permission);
-  }
-  if (permission === "settings.read" && session.kind === "staff") {
-    return true;
   }
   const page = pageForPermission(permission);
   if (!page) return false;

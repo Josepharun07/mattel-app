@@ -29,9 +29,9 @@ function ResetForm({ token }: { token: string }) {
   const [notice, setNotice] = useState("");
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-[#F4F7FB] px-4">
+    <main className="flex min-h-dvh items-center justify-center bg-canvas px-6">
       <form
-        className="w-full max-w-md space-y-4 rounded-2xl border bg-white p-6"
+        className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card p-6 shadow-paper"
         onSubmit={(event) => {
           event.preventDefault();
           void (async () => {
@@ -41,8 +41,8 @@ function ResetForm({ token }: { token: string }) {
           })();
         }}
       >
-        <BrandLogo className="h-16 w-auto" />
-        <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
+        <BrandLogo className="h-12 w-auto" />
+        <h1 className="font-serif text-2xl font-medium text-balance">Choose a new password</h1>
         <Input aria-label="New password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
         <Button type="submit" className="w-full">Update password</Button>
         {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
@@ -58,9 +58,9 @@ function SignInForm() {
   const [notice, setNotice] = useState("");
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-[#F4F7FB] px-4">
+    <main className="flex min-h-dvh items-center justify-center bg-canvas px-6">
       <form
-        className="w-full max-w-md space-y-4 rounded-2xl border bg-white p-6"
+        className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card p-6 shadow-paper"
         onSubmit={(event) => {
           event.preventDefault();
           void (async () => {
@@ -73,10 +73,10 @@ function SignInForm() {
           })();
         }}
       >
-        <BrandLogo className="h-16 w-auto" />
-        <h1 className="text-2xl font-semibold tracking-tight">Mattel Infrastructures</h1>
-        <p className="text-sm leading-6 text-muted-foreground">
-          Sign in with an account stored in the local database. Passwords are hashed. The same usernames work until cloud beta replaces the database URL.
+        <BrandLogo className="h-12 w-auto" />
+        <h1 className="font-serif text-2xl font-medium text-balance">Mattel Infrastructures</h1>
+        <p className="text-pretty text-sm leading-6 text-muted-foreground">
+          Sign in to invoices, payroll, and the yard.
         </p>
         <label className="block space-y-1 text-sm">
           <Label htmlFor="username">Username</Label>

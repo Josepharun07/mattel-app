@@ -26,13 +26,13 @@ export function OperationsHome({
   const payable = pending.reduce((sum, payment) => sum + payment.amount, 0);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-5 sm:px-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <BackButton />
-          <div className="min-w-0 space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome back, {personName}</h1>
-            <p className="text-sm text-muted-foreground">Work, money, and people that need a look today.</p>
+          <div className="min-w-0 space-y-1.5">
+            <h1 className="font-serif text-2xl font-medium text-balance text-foreground">Welcome back, {personName}</h1>
+            <p className="max-w-xl text-pretty text-sm text-muted-foreground">Work, money, and people that need a look today.</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -48,10 +48,10 @@ export function OperationsHome({
         </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid overflow-hidden rounded-xl border border-border bg-card shadow-paper sm:grid-cols-3">
         <Metric href="/approvals" label="Waiting to pay" value={formatInr(payable)} detail={`${pending.length} open`} />
         <Metric href="/equipment" label="Equipment logs" value={String(book.equipment.length)} detail="Machines recorded" />
-        <Metric href="/inventory" label="Needs attention" value={String(lowStock + overdueTools)} detail={`${lowStock} stock · ${overdueTools} tools`} />
+        <Metric href="/inventory" label="Needs attention" value={String(lowStock + overdueTools)} detail={`${lowStock} stock, ${overdueTools} tools`} />
       </section>
 
       <section className="space-y-3">
@@ -88,16 +88,10 @@ export function OperationsHome({
 
 function Metric({ href, label, value, detail }: { href: string; label: string; value: string; detail: string }) {
   return (
-    <Link href={href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <Card className="h-full transition-colors hover:bg-accent/40">
-        <CardHeader>
-          <CardDescription>{label}</CardDescription>
-          <CardTitle className="text-2xl font-semibold tracking-tight">{value}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">{detail}</p>
-        </CardContent>
-      </Card>
+    <Link href={href} className="block px-4 py-3 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:border-l sm:border-border sm:first:border-l-0">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-balance tabular-nums">{value}</p>
+      <p className="mt-1 text-sm text-pretty text-muted-foreground">{detail}</p>
     </Link>
   );
 }
@@ -105,9 +99,11 @@ function Metric({ href, label, value, detail }: { href: string; label: string; v
 function Tile({ href, icon: Icon, title, detail }: { href: string; icon: typeof FileText; title: string; detail: string }) {
   return (
     <Link href={href} className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <Card className="h-full gap-2 py-3 transition-colors hover:bg-accent/40">
+      <Card className="h-full gap-2 py-4 transition-colors hover:bg-secondary/50">
         <CardHeader className="gap-2">
-          <Icon className="size-4 text-muted-foreground" />
+          <span className="flex size-10 items-center justify-center rounded-lg bg-secondary text-foreground">
+            <Icon className="size-4" />
+          </span>
           <CardTitle>{title}</CardTitle>
           <CardDescription>{detail}</CardDescription>
         </CardHeader>

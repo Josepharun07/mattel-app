@@ -6,7 +6,6 @@ import { PageFrame } from "@/views/shell/page-frame";
 import { Badge } from "@/views/ui/badge";
 import { Button } from "@/views/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/views/ui/card";
-import { employeeRoleLabel } from "@/lib/auth/pages";
 import type { StaffDirectory, StaffRecord } from "@/lib/staff/directory";
 
 function initials(name: string) {
@@ -57,7 +56,7 @@ function StaffCard({ person }: { person: StaffRecord }) {
           <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">{initials(person.fullName)}</span>
           <div className="min-w-0">
             <CardTitle className="truncate text-base">{person.fullName}</CardTitle>
-            <p className="truncate text-xs text-muted-foreground">{employeeRoleLabel(person.accountRole ?? "STAFF")}</p>
+            <p className="truncate text-xs text-muted-foreground">{person.accessRoleName || "No role"}</p>
           </div>
           <Badge tone={person.active === false ? "neutral" : "success"} className="ml-auto">{person.active === false ? "Inactive" : "Active"}</Badge>
         </CardHeader>

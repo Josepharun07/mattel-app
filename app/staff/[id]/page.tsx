@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { pendingProfileRequest } from "@/controllers/account-controls";
 import { getEmployeeForProfile } from "@/controllers/staff";
+import { listAccessRoles } from "@/models/access-roles";
 import { StaffEditor } from "@/views/staff/staff-editor";
 import { getCurrentSession } from "@/lib/auth/current";
 
@@ -36,6 +37,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
       requestMode={self && !admin}
       admin={admin}
       pending={pending}
+      accessRoles={await listAccessRoles()}
     />
   );
 }

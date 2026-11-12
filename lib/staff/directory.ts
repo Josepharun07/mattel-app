@@ -36,6 +36,8 @@ export type StaffRecord = {
   roleIds: string[];
   accountRole?: string;
   pageAccess?: string[];
+  accessRoleId?: string;
+  accessRoleName?: string;
   active?: boolean;
   deletedAt: string | null;
 };
@@ -222,6 +224,8 @@ export function saveStaffMember(directory: StaffDirectory, draft: StaffDraft, id
     roleIds: existing?.roleIds ?? [],
     accountRole: existing?.accountRole ?? "STAFF",
     pageAccess: existing?.pageAccess ?? [],
+    accessRoleId: draft.accessRoleId ?? existing?.accessRoleId,
+    accessRoleName: draft.accessRoleName ?? existing?.accessRoleName,
     deletedAt: null,
   };
   const staff = existing

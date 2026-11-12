@@ -41,8 +41,8 @@ export function SettingsRail({ pages, accent }: { pages: "all" | string[]; accen
   const current = visible.some((item) => item.id === section) ? section : visible[0]?.id;
 
   return (
-    <aside className="no-print sticky top-0 flex h-svh w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-2 py-3 text-sidebar-foreground">
-      <p className="px-2 pb-2 text-xs font-medium text-muted-foreground">Settings</p>
+    <aside className="no-print sticky top-0 flex h-dvh w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-2 py-3 text-sidebar-foreground">
+      <p className="px-2.5 pb-2 text-xs font-medium text-muted-foreground">Settings</p>
       <nav className="flex flex-col gap-1">
         {visible.map((item) => {
           const Icon = item.icon;
@@ -52,14 +52,18 @@ export function SettingsRail({ pages, accent }: { pages: "all" | string[]; accen
               key={item.id}
               type="button"
               className={cn(
-                "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-sidebar-accent",
-                active && "text-white hover:text-white",
+                "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-sidebar-accent",
+                active && "bg-card text-foreground",
               )}
-              style={active ? { backgroundColor: accent } : undefined}
+              style={
+                active
+                  ? { boxShadow: `inset 3px 0 0 ${accent}, 0 1px 1px rgb(0 0 0 / 0.04), 0 6px 12px -10px rgb(0 0 0 / 0.16)` }
+                  : undefined
+              }
               aria-current={active ? "page" : undefined}
               onClick={() => setSection(item.id)}
             >
-              <Icon className="size-3.5 shrink-0" />
+              <Icon className="size-4 shrink-0" />
               <span className="truncate">{item.label}</span>
             </button>
           );

@@ -24,12 +24,12 @@ export function TableRow({ className, ...props }: ComponentProps<"tr">) {
 export function TableHead({ className, ...props }: ComponentProps<"th">) {
   return (
     <th
-      className={cn("h-10 px-3 text-left align-middle text-xs font-medium text-muted-foreground", className)}
+      className={cn("h-9 px-3 text-left align-middle text-sm font-medium text-muted-foreground", className)}
       {...props}
     />
   );
 }
 
 export function TableCell({ className, ...props }: ComponentProps<"td">) {
-  return <td className={cn("px-3 py-2 align-middle", className)} {...props} />;
+  return <td className={cn("px-3 py-2 align-middle text-sm tabular-nums", className)} {...props} />;
 }

@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { requestProfileUpdate, reviewProfileUpdate } from "@/controllers/account-controls";
 import { saveStaffAction } from "@/controllers/staff";
-import { allPageGrants, employeeRoles, employeeRoleLabel, isEmployeeRole, officePages, roleHasFullOffice, settingsPages, type EmployeeRole } from "@/lib/auth/pages";
+import type { AccessRoleRow } from "@/models/access-roles";
 import { PageFrame } from "@/views/shell/page-frame";
 import { useConfirm } from "@/views/shell/confirm";
 import { useToast } from "@/views/shell/toast";
@@ -12,7 +12,6 @@ import { Button } from "@/views/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/views/ui/card";
 import { Input } from "@/views/ui/input";
 import { Label } from "@/views/ui/label";
-import { Switch } from "@/views/ui/switch";
 import { Textarea } from "@/views/ui/textarea";
 import { PasswordReset } from "@/views/staff/password-reset";
 import { RecordActions } from "@/views/shell/record-actions";
@@ -57,6 +56,7 @@ export function StaffEditor({
   requestMode = false,
   admin = false,
   pending,
+  accessRoles,
 }: {
   directory: StaffDirectory;
   role: AccessRole;
@@ -65,6 +65,7 @@ export function StaffEditor({
   requestMode?: boolean;
   admin?: boolean;
   pending?: { id: string; fullName: string; email: string; address: string } | null;
+  accessRoles: Pick<AccessRoleRow, "id" | "name" | "slug">[];
 }) {
   const confirm = useConfirm();
   const toast = useToast();
@@ -73,9 +74,9 @@ export function StaffEditor({
   const [editing, setEditing] = useState(creating && canEdit);
   const [inform, setInform] = useState(false);
   const [draft, setDraft] = useState(person ? fromRecord(person) : emptyDraft);
-  const [accountRole, setAccountRole] = useState<EmployeeRole>(isEmployeeRole(person?.accountRole ?? "") ? (person?.accountRole as EmployeeRole) : "STAFF");
-  const [pageAccess, setPageAccess] = useState<string[]>(person?.pageAccess ?? []);
-  const fullOffice = roleHasFullOffice(accountRole);
+  const fallbackRole = accessRoles.find((item) => item.slug === "construction")?.id ?? accessRoles[0]?.id ?? "";
+  const [accessRoleId, setAccessRoleId] = useState(person?.accessRoleId || fallbackRole);
+  const roleName = accessRoles.find((item) => item.id === accessRoleId)?.name ?? person?.accessRoleName ?? "No role";
 
   function set<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft({ ...draft, [key]: value });
@@ -85,12 +86,12 @@ export function StaffEditor({
     const accepted = await confirm({ title: creating ? "Save this employee?" : "Save these employee changes?", detail: creating && inform ? "This saves the person and sends the onboarding email when an address is present." : "This writes the employee record." });
     if (!accepted) return;
     if (requestMode && person) {
-      const requested = await requestProfileUpdate(person.id, { ...draft, accountRole, pageAccess });
+      const requested = await requestProfileUpdate(person.id, draft);
       toast(requested.message, requested.ok);
       if (requested.ok) setEditing(false);
       return;
     }
-    const result = await saveStaffAction({ ...draft, accountRole, pageAccess: fullOffice ? [...allPageGrants] : pageAccess }, person?.id, creating && inform);
+    const result = await saveStaffAction({ ...draft, accessRoleId }, person?.id, creating && inform);
     if (!result.ok) {
       toast(result.message, false);
       return;
@@ -117,7 +118,7 @@ export function StaffEditor({
     <PageFrame
       eyebrow="People"
       title={creating ? "New employee" : draft.fullName || "Employee profile"}
-      description={creating ? "Create the employee record. Inform employee sends an onboarding email when an email address is present." : employeeRoleLabel(accountRole)}
+      description={creating ? "Create the employee record. Inform employee sends an onboarding email when an email address is present." : roleName}
       width="wide"
       action={
         <div className="flex max-w-xl flex-wrap items-center justify-end gap-2">
@@ -156,15 +157,15 @@ export function StaffEditor({
               <select
                 aria-label="Role"
                 className="mt-2 h-9 w-full rounded-md border bg-white px-3 text-sm"
-                value={accountRole}
-                onChange={(event) => setAccountRole(isEmployeeRole(event.target.value) ? event.target.value : "STAFF")}
+                value={accessRoleId}
+                onChange={(event) => setAccessRoleId(event.target.value)}
               >
-                {employeeRoles.map((item) => (
-                  <option key={item.id} value={item.id}>{item.label}</option>
+                {accessRoles.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
               </select>
             ) : (
-              <p className="text-sm">{employeeRoleLabel(accountRole)}</p>
+              <p className="text-sm">{roleName}</p>
             )}
           </div>
         </Section>
@@ -184,46 +185,6 @@ export function StaffEditor({
           {editing ? <Textarea aria-label="Notes" value={draft.notes} onChange={(event) => set("notes", event.target.value)} /> : <p className="text-sm">{draft.notes || "—"}</p>}
         </CardContent>
       </Card>
-      {requestMode ? null : (
-      <Card>
-        <CardHeader>
-          <CardTitle>Pages</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {fullOffice ? "An owner or super user can open every page." : "Turn on the pages this person sees after they sign in."}
-          </p>
-          {["Work", "People", "Administration", "System"].map((group) => (
-            <div key={group} className="space-y-2">
-              <p className="text-xs text-muted-foreground">{group}</p>
-              {officePages.filter((page) => page.group === group).map((page) => (
-                <label key={page.id} className="flex items-center justify-between gap-3 text-sm">
-                  {page.label}
-                  <Switch
-                    checked={fullOffice || pageAccess.includes(page.id)}
-                    disabled={!editing || fullOffice}
-                    onCheckedChange={(checked) => setPageAccess((current) => checked ? [...current, page.id] : current.filter((item) => item !== page.id))}
-                  />
-                </label>
-              ))}
-            </div>
-          ))}
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Settings</p>
-            {settingsPages.map((page) => (
-              <label key={page.id} className="flex items-center justify-between gap-3 text-sm">
-                {page.label}
-                <Switch
-                  checked={fullOffice || pageAccess.includes(page.id)}
-                  disabled={!editing || fullOffice}
-                  onCheckedChange={(checked) => setPageAccess((current) => checked ? [...current, page.id] : current.filter((item) => item !== page.id))}
-                />
-              </label>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      )}
       {pending && admin ? (
         <Card>
           <CardHeader><CardTitle>Waiting for approval</CardTitle></CardHeader>

@@ -31,7 +31,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           <DialogHeader>
             <DialogTitle>{pending?.title ?? "Continue?"}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">{pending?.detail}</p>
+          <p className="text-pretty text-base text-muted-foreground">{pending?.detail}</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => finish(false)}>Cancel</Button>
             <Button type="button" onClick={() => finish(true)}>Continue</Button>

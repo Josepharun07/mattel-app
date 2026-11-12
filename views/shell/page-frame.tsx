@@ -2,6 +2,24 @@ import type { ReactNode } from "react";
 import { BackButton } from "@/views/shell/back-button";
 import { cn } from "@/lib/utils";
 
+const sectionLabels = new Set([
+  "Work",
+  "People",
+  "System",
+  "Resort",
+  "Yard",
+  "Contracts",
+  "Workforce",
+  "Warehouse",
+  "Site",
+  "Administration",
+  "Settings",
+  "Invoices",
+  "Access",
+  "Vendor",
+  "Client",
+]);
+
 const widths = {
   narrow: "max-w-4xl",
   default: "max-w-6xl",
@@ -25,16 +43,17 @@ export function PageFrame({
   leading?: ReactNode;
   children: ReactNode;
 }) {
+  const caption = sectionLabels.has(eyebrow) ? null : eyebrow;
   return (
-    <div className={cn("mx-auto flex w-full min-w-0 max-w-full flex-col gap-6 px-4 py-6 sm:px-6", widths[width])}>
-      <header className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+    <div className={cn("mx-auto flex w-full min-w-0 max-w-full flex-col gap-5 px-4 py-5 sm:px-6", widths[width])}>
+      <header className="flex min-w-0 flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <BackButton />
-          <div className="min-w-0 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
+          <div className="min-w-0 space-y-1.5">
             {leading}
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-            {description ? <p className="max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
+            <h1 className="font-serif text-2xl font-medium text-balance text-foreground">{title}</h1>
+            {caption ? <p className="text-sm text-muted-foreground">{caption}</p> : null}
+            {description ? <p className="max-w-2xl text-pretty text-sm text-muted-foreground">{description}</p> : null}
           </div>
         </div>
         {action}

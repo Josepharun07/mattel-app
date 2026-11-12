@@ -18,8 +18,8 @@ export function Rows({ children }: { children: ReactNode }) {
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block min-w-0 space-y-1">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <label className="block min-w-0 space-y-1.5">
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   );

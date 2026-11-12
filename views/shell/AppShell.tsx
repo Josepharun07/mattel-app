@@ -16,6 +16,7 @@ import {
   PanelLeft,
   RotateCcw,
   Settings2,
+  Shield,
   Stamp,
   Truck,
   Users,
@@ -60,7 +61,10 @@ const groups: { label: string; links: { href: string; label: string; icon: Lucid
   },
   {
     label: "Administration",
-    links: [{ href: "/approvals", label: "Approvals", icon: Stamp, page: "approvals" }],
+    links: [
+      { href: "/roles", label: "Roles", icon: Shield, page: "roles" },
+      { href: "/approvals", label: "Approvals", icon: Stamp, page: "approvals" },
+    ],
   },
   {
     label: "System",
@@ -99,13 +103,16 @@ function isActive(pathname: string, href: string) {
   if (href === "/invoices") {
     return pathname === "/invoices" || pathname.startsWith("/invoices/");
   }
+  if (href === "/roles") {
+    return pathname === "/roles" || pathname.startsWith("/roles/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function NavLinks({ collapsed, pathname, accent, session }: { collapsed: boolean; pathname: string; accent: string; session: CurrentSession }) {
   const visible = groups
     .map((group) => {
-      const links = group.links.filter((link) => link.page === "settings" || seesPage(session.pages, link.page));
+      const links = group.links.filter((link) => seesPage(session.pages, link.page));
       return { ...group, links };
     })
     .filter((group) => group.links.length > 0);
@@ -114,7 +121,7 @@ function NavLinks({ collapsed, pathname, accent, session }: { collapsed: boolean
       {visible.map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
           {collapsed ? null : (
-            <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">{group.label}</p>
+            <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">{group.label}</p>
           )}
           {group.links.map((link) => {
             const active = isActive(pathname, link.href);
@@ -125,13 +132,17 @@ function NavLinks({ collapsed, pathname, accent, session }: { collapsed: boolean
                 href={link.href}
                 title={link.label}
                 className={cn(
-                  "flex h-8 items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "flex h-8 items-center gap-2 rounded-lg px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent",
                   collapsed && "justify-center px-0",
-                  active && "text-white hover:text-white",
+                  active && "bg-card text-foreground",
                 )}
-                style={active ? { backgroundColor: accent } : undefined}
+                style={
+                  active
+                    ? { boxShadow: `inset 3px 0 0 ${accent}, 0 1px 1px rgb(0 0 0 / 0.04), 0 6px 12px -10px rgb(0 0 0 / 0.16)` }
+                    : undefined
+                }
               >
-                <Icon className="size-3.5 shrink-0" />
+                <Icon className="size-4 shrink-0" />
                 <span className={cn("truncate", collapsed && "sr-only")}>{link.label}</span>
               </Link>
             );
@@ -192,8 +203,8 @@ function OfficeShell({
   }
   if (session.kind !== "staff") {
     return (
-      <div className="min-h-svh bg-[#F4F7FB]">
-        <header className="no-print flex h-14 items-center justify-between border-b bg-white px-4">
+      <div className="min-h-dvh bg-canvas">
+        <header className="no-print flex h-14 items-center justify-between border-b border-border bg-card px-5">
           <p className="flex items-center gap-2 text-sm font-semibold">
             <BrandLogo className="h-8 w-auto" />
             {session.name}
@@ -220,23 +231,22 @@ function OfficeShell({
     <div className="flex min-h-full flex-1">
       <aside
         className={cn(
-          "no-print sticky top-0 flex h-svh shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
+          "no-print sticky top-0 flex h-dvh shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
           collapsed ? "w-12" : "w-56",
         )}
       >
-        <div className="h-0.5 w-full" style={{ backgroundColor: accent.hex }} />
-        <div className={cn("flex items-center px-2", collapsed ? "h-12 justify-center px-1" : "h-16")}>
+        <div className={cn("flex items-center px-3", collapsed ? "h-14 justify-center px-1" : "h-16")}>
           <Link href="/" className="flex min-w-0 items-center gap-1.5 px-0.5" title="Mattel Infrastructures">
-            <BrandLogo className={cn("shrink-0 object-contain", collapsed ? "h-7 w-7" : "h-11 w-auto")} />
+            <BrandLogo className={cn("shrink-0 object-contain", collapsed ? "h-7 w-7" : "h-9 w-auto")} />
             {collapsed ? null : (
               <span className="flex shrink-0 flex-col justify-center gap-1">
-                <span className="text-[18px] font-bold leading-none tracking-tight text-sidebar-foreground">Mattel</span>
-                <span className="whitespace-nowrap text-[14px] font-medium leading-none tracking-tight text-muted-foreground">Infrastructures</span>
+                <span className="text-base font-semibold leading-none text-sidebar-foreground">Mattel</span>
+                <span className="whitespace-nowrap text-sm leading-none text-muted-foreground">Infrastructures</span>
               </span>
             )}
           </Link>
         </div>
-        <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pb-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pb-3 [scrollbar-color:#e0e0e0_transparent] [scrollbar-width:thin]">
           <NavLinks collapsed={collapsed} pathname={pathname} accent={accent.hex} session={session} />
         </nav>
         <div className={cn("mt-auto flex flex-col gap-1 border-t border-sidebar-border px-2 py-2", collapsed && "items-center px-1")}>
@@ -244,7 +254,7 @@ function OfficeShell({
             type="button"
             onClick={toggle}
             className={cn(
-              "inline-flex h-8 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent",
+              "inline-flex h-8 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent",
               collapsed ? "size-8" : "w-full justify-start gap-2 px-2",
             )}
             aria-expanded={!collapsed}
@@ -258,11 +268,11 @@ function OfficeShell({
             title={session.name}
             aria-label={session.name}
             className={cn(
-              "inline-flex h-8 items-center rounded-md hover:bg-sidebar-accent",
+              "inline-flex h-8 items-center rounded-lg hover:bg-sidebar-accent",
               collapsed ? "size-8 justify-center" : "w-full justify-start gap-2 px-1",
             )}
           >
-            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
               {(session.name.trim()[0] ?? "M").toUpperCase()}
             </span>
             {collapsed ? null : <span className="min-w-0 truncate text-sm">{session.name}</span>}
@@ -271,12 +281,12 @@ function OfficeShell({
             type="button"
             onClick={() => void signOut()}
             className={cn(
-              "inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent",
+              "inline-flex h-8 items-center gap-2 rounded-lg px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent",
               collapsed && "size-8 justify-center px-0",
             )}
             aria-label="Sign out"
           >
-            <LogOut className="size-3.5 shrink-0" />
+            <LogOut className="size-4 shrink-0" />
             {collapsed ? null : <span>Sign out</span>}
           </button>
         </div>

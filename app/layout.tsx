@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter, Source_Serif_4 } from "next/font/google";
 import { SignIn } from "@/views/auth/sign-in";
 import { AccentRoot } from "@/views/shell/accent-root";
 import { AppShell } from "@/views/shell/AppShell";
@@ -15,6 +15,11 @@ const inter = Inter({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
   subsets: ["latin"],
 });
 
@@ -40,8 +45,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const session = await getCurrentSession();
   const portal = session && session.kind !== "staff" ? await getPortalData() : null;
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-canvas text-steel">
+    <html lang="en" className={`${inter.variable} ${geistMono.variable} ${sourceSerif.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col bg-canvas text-foreground">
         {session ? (
           <WorkspaceProvider>
             <AccentRoot>
