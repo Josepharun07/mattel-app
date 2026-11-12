@@ -5,18 +5,18 @@ import { roundMoney } from "@/lib/money";
 export type ResortPaymentStatus = "PAID" | "PARTIALLY_PAID" | "UNPAID";
 export type ResortLeaseStatus = "ACTIVE" | "EXPIRED" | "TERMINATED";
 
-export function generateResortInvoiceNumber(year: number, sequence: number) {
-  return generateInvoiceNumber("RES", year, sequence);
+export function generateResortInvoiceNumber(partyCode: string, year: number, sequence: number) {
+  return generateInvoiceNumber(partyCode, year, sequence);
 }
 
-export function nextResortInvoiceNumber(existingBaseNumbers: string[], issueDate: Date | string = new Date()) {
+export function nextResortInvoiceNumber(existingBaseNumbers: string[], issueDate: Date | string = new Date(), partyCode = "RES1") {
   const year = calendarYear(issueDate);
-  const prefix = `MI/RES/${year}/`;
+  const prefix = `MI/${partyCode}/${year}/`;
   const maxSequence = existingBaseNumbers.reduce(
     (max, value) => Math.max(max, documentSequence(value, prefix)),
     0,
   );
-  return generateResortInvoiceNumber(year, maxSequence + 1);
+  return generateResortInvoiceNumber(partyCode, year, maxSequence + 1);
 }
 
 export function resortRemainingBalance(grandTotal: number, amountPaid: number) {

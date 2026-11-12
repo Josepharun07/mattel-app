@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "../../db/schema";
+import { nextPublicCode } from "@/lib/records/public-code";
 import { hashPassword } from "./passwords";
 
 export function adminCredentials() {
@@ -12,11 +13,46 @@ export function adminCredentials() {
   return { username, password };
 }
 
+export async function attachStaffProfile(
+  database: PostgresJsDatabase<typeof schema>,
+  user: { id: string; username: string; name: string; role: string | null; staffId: string | null },
+) {
+  if (user.staffId) {
+    const [linked] = await database.select({ id: schema.staff.id }).from(schema.staff).where(eq(schema.staff.id, user.staffId)).limit(1);
+    if (linked) return user.staffId;
+  }
+  const [byEmail] = await database
+    .select({ id: schema.staff.id })
+    .from(schema.staff)
+    .where(eq(schema.staff.email, user.username))
+    .limit(1);
+  if (byEmail) {
+    await database.update(schema.appUsers).set({ staffId: byEmail.id }).where(eq(schema.appUsers.id, user.id));
+    return byEmail.id;
+  }
+  if (user.role !== "SUPER_ADMIN" && user.role !== "OWNER") return user.staffId;
+  const codes = await database.select({ code: schema.staff.publicCode }).from(schema.staff);
+  const [created] = await database
+    .insert(schema.staff)
+    .values({
+      fullName: user.name || "Super admin",
+      publicCode: nextPublicCode(codes.map((row) => row.code).filter((code): code is string => Boolean(code)), user.name || "Super admin"),
+      role: user.role === "OWNER" ? "Owner" : "Super user",
+      accountRole: user.role === "OWNER" ? "OWNER" : "SUPER_USER",
+      hourlyRate: "0.00",
+      dailyBaseRate: "0.00",
+      email: user.username.includes("@") ? user.username : "",
+    })
+    .returning({ id: schema.staff.id });
+  await database.update(schema.appUsers).set({ staffId: created.id }).where(eq(schema.appUsers.id, user.id));
+  return created.id;
+}
+
 export async function ensureSuperAdmin(database: PostgresJsDatabase<typeof schema>) {
   const { username, password } = adminCredentials();
   const passwordHash = hashPassword(password);
   const [existing] = await database
-    .select({ id: schema.appUsers.id })
+    .select({ id: schema.appUsers.id, staffId: schema.appUsers.staffId })
     .from(schema.appUsers)
     .where(eq(schema.appUsers.accessRole, "SUPER_ADMIN"))
     .limit(1);
@@ -25,13 +61,18 @@ export async function ensureSuperAdmin(database: PostgresJsDatabase<typeof schem
       .update(schema.appUsers)
       .set({ username, passwordHash, displayName: "Super admin", kind: "staff", accessRole: "SUPER_ADMIN" })
       .where(eq(schema.appUsers.id, existing.id));
+    await attachStaffProfile(database, { id: existing.id, username, name: "Super admin", role: "SUPER_ADMIN", staffId: existing.staffId });
     return;
   }
-  await database.insert(schema.appUsers).values({
-    username,
-    passwordHash,
-    kind: "staff",
-    displayName: "Super admin",
-    accessRole: "SUPER_ADMIN",
-  });
+  const [created] = await database
+    .insert(schema.appUsers)
+    .values({
+      username,
+      passwordHash,
+      kind: "staff",
+      displayName: "Super admin",
+      accessRole: "SUPER_ADMIN",
+    })
+    .returning({ id: schema.appUsers.id });
+  await attachStaffProfile(database, { id: created.id, username, name: "Super admin", role: "SUPER_ADMIN", staffId: null });
 }

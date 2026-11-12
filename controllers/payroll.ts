@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { attendanceLogs, payrollSettlements, staff, staffAdvances } from "@/db/schema";
 import { applyPayslipVersionSuffix, recalculateSettlement } from "@/lib/engines/payroll-engine";
+import { sendPayslipEmail } from "@/lib/mail/payslip";
 import { dateKey, noonUtc, writeAccountSettlement, writeSettlement } from "@/lib/payroll/ledger";
 import { buildSettlementPreview } from "@/lib/payroll/settle";
 import { currentWeek } from "@/lib/payroll/range";
@@ -31,6 +32,7 @@ const batchSchema = z.object({
       z.object({
         staffId: z.string().min(1),
         isPresent: z.boolean(),
+        dayFraction: z.number().min(0).max(1),
         overtimeHours: z.number().min(0).max(24),
       }),
     )
@@ -45,8 +47,17 @@ const checkoutSchema = z.object({
 });
 
 function revalidatePayroll() {
+  revalidatePath("/attendance");
   revalidatePath("/payroll");
   revalidatePath("/payroll/settlements");
+}
+
+async function canReadWorkforce() {
+  return (await allowed("payroll.read")) || (await allowed("attendance.read"));
+}
+
+async function canWriteAttendance() {
+  return (await allowed("attendance.write")) || (await allowed("payroll.write"));
 }
 
 function mapSettlement(row: {
@@ -152,14 +163,18 @@ function mapAttendance(log: {
   staffId: string;
   workDate: Date;
   isPresent: boolean;
+  dayFraction: string;
   overtimeHours: string;
   settlementId: string | null;
 }) {
+  const stored = Number(log.dayFraction);
+  const dayFraction = log.isPresent ? (Number.isFinite(stored) ? stored : 1) : 0;
   return {
     id: log.id,
     staffId: log.staffId,
     workDate: dateKey(log.workDate),
-    isPresent: log.isPresent,
+    isPresent: dayFraction > 0,
+    dayFraction,
     overtimeHours: Number(log.overtimeHours),
     settlementId: log.settlementId,
   };
@@ -209,7 +224,7 @@ async function loadDashboard(startDate: string, endDate: string): Promise<Payrol
     periodStart: startDate,
     periodEnd: endDate,
     offline: false,
-    staff: people.map((person) => ({
+    staff: people.filter((person) => person.accountRole !== "OWNER" && person.accountRole !== "SUPER_USER").map((person) => ({
       id: person.id,
       fullName: person.fullName,
       role: person.role,
@@ -244,7 +259,7 @@ function emptyFor(startDate: string, endDate: string) {
 }
 
 export async function getWeeklyPayrollSummary(startDate: string, endDate: string): Promise<PayrollDashboard> {
-  if (!(await allowed("payroll.read"))) return emptyFor(startDate, endDate);
+  if (!(await canReadWorkforce())) return emptyFor(startDate, endDate);
   const empty = emptyFor(startDate, endDate);
   if (!process.env.DATABASE_URL) {
     return empty;
@@ -253,6 +268,23 @@ export async function getWeeklyPayrollSummary(startDate: string, endDate: string
     return await loadDashboard(empty.periodStart, empty.periodEnd);
   } catch {
     return empty;
+  }
+}
+
+export async function getEmployeePayroll(staffId: string) {
+  if (!(await allowed("payroll.read"))) return null;
+  if (!z.uuid().safeParse(staffId).success || !process.env.DATABASE_URL) return null;
+  try {
+    const [person] = await db
+      .select({ id: staff.id, fullName: staff.fullName, role: staff.role, email: staff.email })
+      .from(staff)
+      .where(and(eq(staff.id, staffId), isNull(staff.deletedAt)))
+      .limit(1);
+    if (!person) return null;
+    const payouts = (await loadSettlements()).filter((row) => row.staffId === staffId);
+    return { person, payouts };
+  } catch {
+    return null;
   }
 }
 
@@ -269,7 +301,7 @@ export async function getSettlementHistory(): Promise<SettlementRow[]> {
 }
 
 export async function logDailyAttendance(batchData: AttendanceBatch): Promise<PayrollMutationResult> {
-  if (!(await allowed("payroll.write"))) return { success: false as const, message: "You do not have access to this." };
+  if (!(await canWriteAttendance())) return { success: false as const, message: "You do not have access to this." };
   const parsed = batchSchema.safeParse(batchData);
   if (!parsed.success) {
     return { success: false, message: "Enter a work date, staff member, and overtime hours from 0 to 24." };
@@ -312,7 +344,8 @@ export async function logDailyAttendance(batchData: AttendanceBatch): Promise<Pa
         await db
           .update(attendanceLogs)
           .set({
-            isPresent: entry.isPresent,
+            isPresent: entry.dayFraction > 0,
+            dayFraction: entry.dayFraction.toFixed(2),
             overtimeHours: entry.overtimeHours.toFixed(2),
           })
           .where(eq(attendanceLogs.id, row.id));
@@ -320,7 +353,8 @@ export async function logDailyAttendance(batchData: AttendanceBatch): Promise<Pa
         await db.insert(attendanceLogs).values({
           staffId: entry.staffId,
           workDate: noonUtc(parsed.data.workDate),
-          isPresent: entry.isPresent,
+          isPresent: entry.dayFraction > 0,
+          dayFraction: entry.dayFraction.toFixed(2),
           overtimeHours: entry.overtimeHours.toFixed(2),
         });
       }
@@ -422,7 +456,7 @@ export async function executeWeeklyPayrollCycle(periodEnd: string): Promise<Payr
   try {
     const people = await db.select().from(staff).where(isNull(staff.deletedAt));
     const applied: { settlement: SettlementRow; settledLogIds: string[] }[] = [];
-    for (const person of people) {
+    for (const person of people.filter((row) => row.accountRole !== "OWNER" && row.accountRole !== "SUPER_USER")) {
       const result = await db.transaction((tx) =>
         writeSettlement(tx, {
           staffId: person.id,
@@ -543,9 +577,32 @@ export async function executeStaffSettlement(
       return { success: false, message: result.message };
     }
     revalidatePayroll();
+    const [worker] = await db
+      .select({ email: staff.email, fullName: staff.fullName })
+      .from(staff)
+      .where(eq(staff.id, staffId))
+      .limit(1);
+    let message = `${result.settlement.staffName} settled.`;
+    if (worker?.email.trim()) {
+      const mail = await sendPayslipEmail({
+        to: worker.email.trim(),
+        name: worker.fullName,
+        payslipNumber: result.settlement.payslipNumber,
+        periodStart: result.settlement.periodStart,
+        periodEnd: result.settlement.periodEnd,
+        daysPresent: result.settlement.daysPresent,
+        overtimeHours: result.settlement.totalOvertimeHours,
+        gross: result.settlement.grossEarned,
+        deductions: result.settlement.totalDeductions,
+        netPaid: result.settlement.amountPaid,
+      });
+      message = `${message} ${mail.message}`;
+    } else {
+      message = `${message} Add an email address on the employee to send the payslip.`;
+    }
     return {
       success: true,
-      message: `${result.settlement.staffName} settled.`,
+      message,
       settlement: result.settlement,
       settledLogIds: result.settledLogIds,
       settledAdvanceIds: result.settledAdvanceIds,

@@ -58,6 +58,7 @@ export const systemSettings = pgTable("system_settings", {
 export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  publicCode: text("public_code").unique(),
   companyName: text("company_name"),
   email: text("email"),
   phone: text("phone").notNull().default(""),
@@ -74,6 +75,7 @@ export const projects = pgTable("projects", {
     .references(() => clients.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull().default(""),
+  publicCode: text("public_code").unique(),
   title: text("title").notNull(),
   location: text("location"),
   status: text("status").notNull().default("ACTIVE"),
@@ -157,6 +159,7 @@ export const invoices = pgTable("invoices", {
   id: uuid("id").primaryKey().defaultRandom(),
   baseInvoiceNumber: text("base_invoice_number").notNull(),
   invoiceNumber: text("invoice_number").notNull().unique(),
+  invoiceName: text("invoice_name").notNull().default(""),
   version: integer("version").notNull().default(0),
   isFinalized: boolean("is_finalized").notNull().default(true),
   clientId: uuid("client_id").references(() => clients.id, { onDelete: "restrict" }),
@@ -322,6 +325,7 @@ export const assetRentals = pgTable("asset_rentals", {
 export const staff = pgTable("staff", {
   id: uuid("id").primaryKey().defaultRandom(),
   fullName: text("full_name").notNull(),
+  publicCode: text("public_code").unique(),
   role: text("role").notNull(),
   hourlyRate: numeric("hourly_rate", money).notNull(),
   dailyBaseRate: numeric("daily_base_rate", money).notNull(),
@@ -410,6 +414,7 @@ export const attendanceLogs = pgTable("attendance_logs", {
     .notNull(),
   workDate: timestamp("work_date", { withTimezone: true }).notNull(),
   isPresent: boolean("is_present").notNull().default(true),
+  dayFraction: numeric("day_fraction", money).notNull().default("1.00"),
   overtimeHours: numeric("overtime_hours", money).notNull().default("0.00"),
   settlementId: uuid("settlement_id").references(() => payrollSettlements.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

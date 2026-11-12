@@ -4,6 +4,7 @@ import { allowed } from "@/lib/auth/access";
 
 import { revalidatePath } from "next/cache";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { allocatePublicCode, savePublicCode } from "@/lib/records/public-code";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -68,6 +69,7 @@ const clientInput = z.object({
   address: z.string().trim().optional(),
   gstin: z.string().trim().optional(),
   companyName: z.string().trim().optional(),
+  publicCode: z.string().trim().optional(),
 });
 
 export async function getActiveClients() {
@@ -99,6 +101,7 @@ export async function createClient(input: z.infer<typeof clientInput>): Promise<
       phone: parsed.data.phone ?? "",
       address: parsed.data.address,
       gstin: parsed.data.gstin,
+      publicCode: await allocatePublicCode("client", parsed.data.name),
     })
     .returning({ id: clients.id });
 
@@ -120,6 +123,10 @@ export async function updateClient(
     return { success: false, message: "Enter a valid client before saving." };
   }
 
+  if (parsed.data.publicCode) {
+    const claimed = await savePublicCode("client", id, parsed.data.publicCode);
+    if (!claimed.ok) return { success: false, message: claimed.message };
+  }
   const updated = await db
     .update(clients)
     .set({
@@ -265,6 +272,7 @@ export async function createProject(input: z.infer<typeof projectInput>): Promis
       title: parsed.data.name,
       location: parsed.data.location,
       status: parsed.data.status ?? "ACTIVE",
+      publicCode: await allocatePublicCode("project", parsed.data.name),
     })
     .returning({ id: projects.id });
 
@@ -286,7 +294,7 @@ export async function setProjectStatus(id: string, status: "ACTIVE" | "COMPLETED
 
 export async function updateProject(
   id: string,
-  input: { name: string; location?: string; status: "ACTIVE" | "COMPLETED"; clientIds: string[] },
+  input: { name: string; location?: string; status: "ACTIVE" | "COMPLETED"; clientIds: string[]; publicCode?: string },
 ) {
   if (!(await allowed("projects.write"))) return { success: false as const, message: "You do not have access to this." };
   if (!process.env.DATABASE_URL) {
@@ -295,6 +303,10 @@ export async function updateProject(
   const clientIds = [...new Set(input.clientIds)];
   if (!z.uuid().safeParse(id).success || clientIds.length === 0 || !input.name.trim()) {
     return { success: false as const, message: "Enter a project name and choose at least one client." };
+  }
+  if (input.publicCode) {
+    const claimed = await savePublicCode("project", id, input.publicCode);
+    if (!claimed.ok) return { success: false as const, message: claimed.message };
   }
   await db
     .update(projects)

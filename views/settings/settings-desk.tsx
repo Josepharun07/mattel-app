@@ -1,13 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { usePageState } from "@/lib/navigation/page-memory";
-import { Building2, CreditCard, Database, FileSignature, LogOut, Palette, Settings, Sliders } from "lucide-react";
-import { signOutAction } from "@/controllers/auth";
 import type { DatabaseStatus } from "@/controllers/database";
-import { Button } from "@/views/ui/button";
-import { useConfirm } from "@/views/shell/confirm";
 import { Card, CardContent } from "@/views/ui/card";
+import { useSettingsSection } from "@/views/settings/settings-rail";
 import { AppearancePanel } from "@/views/settings/appearance-panel";
 import { DatabasePanel } from "@/views/settings/database-panel";
 import { BankDetailsForm } from "@/views/settings/bank-details-form";
@@ -18,17 +14,7 @@ import { UnitsManager } from "@/views/settings/units-manager";
 import type { SystemSettingsView } from "@/lib/settings/profile";
 import { useWorkspace } from "@/lib/workspace/store";
 
-const tabs = [
-  { id: "profile", label: "Company Profile", icon: Building2 },
-  { id: "bank", label: "Bank Account Details", icon: CreditCard },
-  { id: "branding", label: "Branding & Assets", icon: FileSignature },
-  { id: "units", label: "Measurement Units", icon: Sliders },
-  { id: "defaults", label: "Invoice Defaults", icon: Settings },
-  { id: "appearance", label: "App Settings", icon: Palette },
-  { id: "database", label: "Database", icon: Database },
-] as const;
-
-type TabId = (typeof tabs)[number]["id"];
+const sectionIds = ["profile", "bank", "branding", "units", "defaults", "appearance", "database"] as const;
 
 export function SettingsDesk({
   initial,
@@ -39,12 +25,11 @@ export function SettingsDesk({
   database: DatabaseStatus;
   pages: "all" | string[];
 }) {
-  const confirm = useConfirm();
   const workspace = useWorkspace();
-  const [tab, setTab] = usePageState<TabId>("tab", "profile");
+  const { section } = useSettingsSection();
   const [settings, setSettings] = useState(initial);
-  const visibleTabs = tabs.filter((item) => pages === "all" || pages.includes(`settings.${item.id}`));
-  const currentTab = visibleTabs.some((item) => item.id === tab) ? tab : visibleTabs[0]?.id;
+  const visible = sectionIds.filter((id) => pages === "all" || pages.includes(`settings.${id}`));
+  const currentTab = visible.includes(section) ? section : visible[0];
 
   function save(patch: Partial<SystemSettingsView>) {
     const next = { ...settings, ...patch };
@@ -71,26 +56,6 @@ export function SettingsDesk({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto">
-        {visibleTabs.map((item) => {
-          const Icon = item.icon;
-          const active = currentTab === item.id;
-          return (
-            <Button
-              key={item.id}
-              type="button"
-              variant={active ? "default" : "outline"}
-              size="sm"
-              className="shrink-0"
-              onClick={() => setTab(item.id)}
-            >
-              <Icon className="size-4" />
-              {item.label}
-            </Button>
-          );
-        })}
-      </div>
-
       <Card>
         <CardContent className="pt-4">
         {currentTab === "profile" ? (
@@ -132,31 +97,6 @@ export function SettingsDesk({
       {initial.offline ? (
         <p className="text-sm text-muted-foreground">PostgreSQL is not connected. Changes stay in this browser.</p>
       ) : null}
-
-      <Card>
-        <CardContent className="flex items-center justify-between gap-3 pt-4">
-          <div>
-            <p className="text-sm font-medium">Sign out</p>
-            <p className="text-xs text-muted-foreground">End this session on this browser.</p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void (async () => {
-                const accepted = await confirm({ title: "Sign out?", detail: "This ends the session on this browser." });
-                if (!accepted) return;
-                await signOutAction();
-                window.location.assign("/");
-              })();
-            }}
-          >
-            <LogOut />
-            Sign out
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { FileText, HardHat, Package, Wallet } from "lucide-react";
+import { CalendarCheck, FileText, HardHat, Package } from "lucide-react";
 import { formatInr } from "@/lib/money";
 import type { SiteBook } from "@/lib/site/book";
 import { BackButton } from "@/views/shell/back-button";
@@ -43,7 +43,7 @@ export function OperationsHome({
             </Link>
           </Button>
           <Button asChild size="sm">
-            <Link href="/invoices/create">New invoice</Link>
+            <Link href="/invoices">New invoice</Link>
           </Button>
         </div>
       </header>
@@ -57,9 +57,9 @@ export function OperationsHome({
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-foreground">Quick actions</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Tile href="/invoices/create" icon={FileText} title="Invoice" detail="Compile a bill" />
+          <Tile href="/invoices" icon={FileText} title="Invoice" detail="Project folders" />
           <Tile href="/inventory" icon={Package} title="Stock" detail="Materials on hand" />
-          <Tile href="/payroll" icon={Wallet} title="Attendance" detail="Day and overtime" />
+          <Tile href="/attendance" icon={CalendarCheck} title="Attendance" detail="Day and overtime" />
           <Tile href="/staff" icon={HardHat} title="Employees" detail="People and pay" />
         </div>
       </section>

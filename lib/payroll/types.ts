@@ -15,6 +15,7 @@ export type AttendanceCell = {
   staffId: string;
   workDate: string;
   isPresent: boolean;
+  dayFraction: number;
   overtimeHours: number;
   settlementId: string | null;
 };
@@ -110,5 +111,5 @@ export type PayrollMutationResult = {
 
 export type AttendanceBatch = {
   workDate: string;
-  entries: { staffId: string; isPresent: boolean; overtimeHours: number }[];
+  entries: { staffId: string; isPresent: boolean; dayFraction: number; overtimeHours: number }[];
 };

@@ -14,6 +14,7 @@ export function PageFrame({
   description,
   width = "default",
   action,
+  leading,
   children,
 }: {
   eyebrow: string;
@@ -21,6 +22,7 @@ export function PageFrame({
   description?: string;
   width?: keyof typeof widths;
   action?: ReactNode;
+  leading?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -30,6 +32,7 @@ export function PageFrame({
           <BackButton />
           <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
+            {leading}
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
             {description ? <p className="max-w-2xl text-sm text-muted-foreground">{description}</p> : null}
           </div>

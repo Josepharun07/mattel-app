@@ -180,6 +180,7 @@ export async function findProject(id: string) {
     project: {
       id: project.id,
       name: project.name || project.title,
+      publicCode: project.publicCode ?? "",
       location: project.location ?? "",
       status: project.status === "COMPLETED" ? ("COMPLETED" as const) : ("ACTIVE" as const),
       clientIds: assigned.length > 0 ? assigned : [project.clientId],

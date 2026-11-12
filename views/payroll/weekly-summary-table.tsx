@@ -39,11 +39,11 @@ export function WeeklySummaryTable({
       },
       {
         accessorKey: "hourlyRate",
-        header: "OT rate",
+        header: "Overtime rate",
         cell: ({ row }) => <span className="font-mono">{formatInr(row.original.hourlyRate)}</span>,
       },
       { accessorKey: "daysPresent", header: "Unsettled days" },
-      { accessorKey: "totalOvertimeHours", header: "OT hours" },
+      { accessorKey: "totalOvertimeHours", header: "Overtime hours" },
       {
         accessorKey: "grossPayable",
         header: "Gross payable",

@@ -39,14 +39,14 @@ describe("invoice engine", () => {
   });
 
   it("builds calendar-year numbers and keeps the sequence when a revision is saved", () => {
-    expect(generateInvoiceNumber("CON", 2026, 1)).toBe("MI/CON/2026/0001");
-    expect(generateInvoiceNumber("RES", 2026, 12)).toBe("MI/RES/2026/0012");
+    expect(generateInvoiceNumber("TES1", 2026, 1)).toBe("MI/TES1/2026/0001");
+    expect(generateInvoiceNumber("RES1", 2026, 12)).toBe("MI/RES1/2026/0012");
     expect(applyDocumentVersionSuffix("MI/CON/2026/0001", 0)).toBe("MI/CON/2026/0001");
     expect(applyDocumentVersionSuffix("MI/CON/2026/0001", 1)).toBe("MI/CON/2026/0001-v1");
     expect(applyDocumentVersionSuffix("MI/CON/2026/0001", 2)).toBe("MI/CON/2026/0001-v2");
-    expect(generatePayslipNumber(2026, 42)).toBe("MI/PAY/2026/0042");
-    expect(applyPayslipVersionSuffix("MI/PAY/2026/0042", 0)).toBe("MI/PAY/2026/0042");
-    expect(applyPayslipVersionSuffix("MI/PAY/2026/0042", 1)).toBe("MI/PAY/2026/0042-v1");
+    expect(generatePayslipNumber("SUR1", 2026, 42)).toBe("MI/SUR1/2026/0042");
+    expect(applyPayslipVersionSuffix("MI/SUR1/2026/0042", 0)).toBe("MI/SUR1/2026/0042");
+    expect(applyPayslipVersionSuffix("MI/SUR1/2026/0042", 1)).toBe("MI/SUR1/2026/0042-v1");
   });
 
   it("charges nothing when GST is off", () => {

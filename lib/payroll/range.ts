@@ -6,8 +6,8 @@ export function formatDay(date: Date): string {
 
 export function currentWeek(today = new Date()) {
   return {
-    start: formatDay(startOfWeek(today, { weekStartsOn: 1 })),
-    end: formatDay(endOfWeek(today, { weekStartsOn: 1 })),
+    start: formatDay(startOfWeek(today, { weekStartsOn: 0 })),
+    end: formatDay(endOfWeek(today, { weekStartsOn: 0 })),
   };
 }
 

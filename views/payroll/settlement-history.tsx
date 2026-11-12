@@ -26,6 +26,29 @@ import { mergeById } from "@/lib/payroll/merge";
 import { readPayrollSession, serverPayrollSession, subscribePayrollSession, writePayrollSession } from "@/lib/payroll/session";
 import type { SettlementRow } from "@/lib/payroll/types";
 
+function PayslipSheet({ row }: { row: SettlementRow }) {
+  return (
+    <article className="mx-auto hidden max-w-[720px] bg-white p-8 text-black print:block">
+      <p className="text-xs uppercase tracking-wide text-neutral-500">Mattel Infrastructures</p>
+      <h1 className="mt-1 text-2xl font-semibold">Payslip {row.payslipNumber || "Draft"}</h1>
+      <p className="mt-1 text-sm">{row.staffName}</p>
+      <p className="text-sm text-neutral-600">
+        {format(parseISO(row.periodStart), "d MMM yyyy")} – {format(parseISO(row.periodEnd), "d MMM yyyy")} · {labels[row.checkoutType]}
+      </p>
+      <table className="mt-6 w-full text-sm">
+        <tbody>
+          <tr><td className="py-1">Days</td><td className="py-1 text-right">{row.daysPresent}</td></tr>
+          <tr><td className="py-1">Overtime hours</td><td className="py-1 text-right">{row.totalOvertimeHours}</td></tr>
+          <tr><td className="py-1">Base pay</td><td className="py-1 text-right">{formatInr(row.basePay)}</td></tr>
+          <tr><td className="py-1">Overtime pay</td><td className="py-1 text-right">{formatInr(row.overtimePay)}</td></tr>
+          <tr><td className="py-1">Advances deducted</td><td className="py-1 text-right">{formatInr(row.totalDeductions)}</td></tr>
+          <tr><td className="border-t py-2 font-medium">Net paid</td><td className="border-t py-2 text-right font-medium">{formatInr(row.amountPaid)}</td></tr>
+        </tbody>
+      </table>
+    </article>
+  );
+}
+
 const labels = {
   WEEKLY_CYCLED: "Weekly cycle",
   MID_WEEK_CHECKOUT: "Mid-week checkout",
@@ -43,6 +66,7 @@ export function SettlementHistory({ initialRows }: { initialRows: SettlementRow[
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [printing, setPrinting] = useState<SettlementRow | null>(null);
 
   function openRevision(row: SettlementRow) {
     setEditing(row);
@@ -90,7 +114,7 @@ export function SettlementHistory({ initialRows }: { initialRows: SettlementRow[
         cell: ({ row }) => labels[row.original.checkoutType],
       },
       { accessorKey: "daysPresent", header: "Days" },
-      { accessorKey: "totalOvertimeHours", header: "OT hours" },
+      { accessorKey: "totalOvertimeHours", header: "Overtime hours" },
       {
         accessorKey: "grossPayable",
         header: "Gross",
@@ -107,9 +131,22 @@ export function SettlementHistory({ initialRows }: { initialRows: SettlementRow[
         id: "revise",
         header: "",
         cell: ({ row }) => (
-          <Button type="button" size="sm" variant="outline" onClick={() => openRevision(row.original)}>
-            Revise
-          </Button>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setPrinting(row.original);
+                window.setTimeout(() => window.print(), 50);
+              }}
+            >
+              Print
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => openRevision(row.original)}>
+              Revise
+            </Button>
+          </div>
         ),
       },
     ],
@@ -127,11 +164,12 @@ export function SettlementHistory({ initialRows }: { initialRows: SettlementRow[
   });
 
   return (
-    <div className="space-y-4">
+    <>
+    <div className="space-y-4 print:hidden">
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No payouts have been recorded yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-white">
+        <div className="overflow-x-auto rounded-xl border bg-white print:hidden">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((group) => (
@@ -160,7 +198,7 @@ export function SettlementHistory({ initialRows }: { initialRows: SettlementRow[
           </Table>
         </div>
       )}
-      <Button variant="outline" asChild>
+      <Button variant="outline" className="print:hidden" asChild>
         <Link href="/payroll">Back to payroll</Link>
       </Button>
       {editing ? (
@@ -220,6 +258,8 @@ export function SettlementHistory({ initialRows }: { initialRows: SettlementRow[
         </Dialog>
       ) : null}
     </div>
+    {printing ? <PayslipSheet row={printing} /> : null}
+    </>
   );
 }
 

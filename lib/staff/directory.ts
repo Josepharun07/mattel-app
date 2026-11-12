@@ -15,6 +15,7 @@ export type StaffPhone = {
 export type StaffRecord = {
   id: string;
   fullName: string;
+  publicCode?: string;
   address: string;
   phones: StaffPhone[];
   email: string;
@@ -187,6 +188,7 @@ export function validateStaffDraft(draft: StaffDraft, roles: JobRole[]) {
     value: {
       fullName,
       address: clean(draft.address),
+      publicCode: clean(draft.publicCode ?? ""),
       phones,
       email,
       panNumber,

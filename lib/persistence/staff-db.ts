@@ -20,6 +20,7 @@ export async function loadStaffDirectory(): Promise<StaffDirectory> {
     staff: people.map((person) => ({
       id: person.id,
       fullName: person.fullName,
+      publicCode: person.publicCode ?? "",
       address: person.address,
       phones: phones
         .filter((phone) => phone.staffId === person.id)
@@ -51,6 +52,7 @@ export async function loadStaffDirectory(): Promise<StaffDirectory> {
 export async function upsertStaff(record: StaffRecord) {
   const values = {
     fullName: record.fullName,
+    ...(record.publicCode ? { publicCode: record.publicCode } : {}),
     hourlyRate: money(record.hourlyRate),
     dailyBaseRate: money(record.dailyBaseRate),
     address: record.address,

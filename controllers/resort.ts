@@ -196,14 +196,17 @@ export async function generateResortMonthlyInvoice(payload: z.infer<typeof invoi
     if (!lease) {
       return { success: false as const, message: "That lease was not found." };
     }
-    const yearPrefix = `MI/RES/${parsed.data.issueDate.slice(0, 4)}/`;
+    const { codeStem } = await import("@/lib/records/public-code");
+    const partyCode = `${codeStem(lease.operatorName)}1`;
+    const yearPrefix = `MI/${partyCode}/${parsed.data.issueDate.slice(0, 4)}/`;
     const existing = await db
       .select({ baseInvoiceNumber: invoices.baseInvoiceNumber })
       .from(invoices)
       .where(and(like(invoices.baseInvoiceNumber, `${yearPrefix}%`), isNull(invoices.deletedAt)));
     const invoiceNumber = nextResortInvoiceNumber(
-      existing.map((row) => row.baseInvoiceNumber).filter((value) => documentSequence(value, yearPrefix) > 0 || value.startsWith(yearPrefix)),
+      existing.map((row) => row.baseInvoiceNumber).filter((value) => value.startsWith(yearPrefix)),
       parsed.data.issueDate,
+      partyCode,
     );
     const totals = resortInvoiceTotals(Number(lease.monthlyRentAmount), parsed.data.gstEnabled);
     const [created] = await db

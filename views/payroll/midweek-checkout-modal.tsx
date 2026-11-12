@@ -76,7 +76,7 @@ export function MidweekCheckoutModal({
                 {formatInr(preview.grossPayable)}
               </p>
               <p className="mt-1 text-muted-foreground">
-                {preview.daysPresent} present day{preview.daysPresent === 1 ? "" : "s"} · {preview.totalOvertimeHours} OT
+                {preview.daysPresent} present day{preview.daysPresent === 1 ? "" : "s"} · {preview.totalOvertimeHours} overtime hours
                 hours · base {formatInr(preview.basePay)} · overtime {formatInr(preview.overtimePay)}
               </p>
             </div>

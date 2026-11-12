@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import {
   Boxes,
+  CalendarCheck,
   FileText,
   HardHat,
   LayoutDashboard,
+  LogOut,
   Landmark,
   FolderKanban,
   Contact,
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 import { signOutAction } from "@/controllers/auth";
 import { BrandLogo } from "@/views/brand/logo";
+import { SettingsRail, SettingsSectionProvider } from "@/views/settings/settings-rail";
 import { ConfirmProvider, useConfirm } from "@/views/shell/confirm";
 import { ToastProvider } from "@/views/shell/toast";
 import { PortalHome } from "@/views/site/control-desks";
@@ -39,11 +42,12 @@ const groups: { label: string; links: { href: string; label: string; icon: Lucid
     label: "Work",
     links: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard, page: "dashboard" },
-      { href: "/invoices/create", label: "Invoices", icon: FileText, page: "invoices" },
+      { href: "/invoices", label: "Invoices", icon: FileText, page: "invoices" },
       { href: "/projects", label: "Projects", icon: FolderKanban, page: "projects" },
       { href: "/clients", label: "Clients", icon: Contact, page: "clients" },
       { href: "/inventory", label: "Inventory", icon: Boxes, page: "inventory" },
       { href: "/rentals", label: "Rentals", icon: Wrench, page: "rentals" },
+      { href: "/attendance", label: "Attendance", icon: CalendarCheck, page: "attendance" },
       { href: "/payroll", label: "Payroll", icon: Wallet, page: "payroll" },
       { href: "/subcontracts", label: "Subcontracts", icon: Users, page: "subcontracts" },
       { href: "/resort-rental", label: "Resort", icon: Landmark, page: "resort" },
@@ -92,16 +96,16 @@ function isActive(pathname: string, href: string) {
   if (href === "/settings") {
     return pathname === "/settings";
   }
+  if (href === "/invoices") {
+    return pathname === "/invoices" || pathname.startsWith("/invoices/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function NavLinks({ collapsed, pathname, accent, session }: { collapsed: boolean; pathname: string; accent: string; session: CurrentSession }) {
   const visible = groups
     .map((group) => {
-      const links = group.links.filter((link) => link.page === "settings" || link.page === "self" || seesPage(session.pages, link.page));
-      if (group.label === "People" && session.staffId) {
-        links.unshift({ href: `/staff/${session.staffId}`, label: "My profile", icon: HardHat, page: "self" });
-      }
+      const links = group.links.filter((link) => link.page === "settings" || seesPage(session.pages, link.page));
       return { ...group, links };
     })
     .filter((group) => group.links.length > 0);
@@ -250,7 +254,7 @@ function OfficeShell({
             {collapsed ? null : <span className="text-sm">Collapse</span>}
           </button>
           <Link
-            href={session.staffId ? `/staff/${session.staffId}` : "/settings"}
+            href={session.staffId ? `/staff/${session.staffId}` : "/staff"}
             title={session.name}
             aria-label={session.name}
             className={cn(
@@ -263,11 +267,26 @@ function OfficeShell({
             </span>
             {collapsed ? null : <span className="min-w-0 truncate text-sm">{session.name}</span>}
           </Link>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className={cn(
+              "inline-flex h-8 items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent",
+              collapsed && "size-8 justify-center px-0",
+            )}
+            aria-label="Sign out"
+          >
+            <LogOut className="size-3.5 shrink-0" />
+            {collapsed ? null : <span>Sign out</span>}
+          </button>
         </div>
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
-        <main className="min-w-0 flex-1">{children}</main>
-      </div>
+      <SettingsSectionProvider>
+        {pathname === "/settings" ? <SettingsRail pages={session.pages} accent={accent.hex} /> : null}
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+          <main className="min-w-0 flex-1">{children}</main>
+        </div>
+      </SettingsSectionProvider>
     </div>
   );
 }

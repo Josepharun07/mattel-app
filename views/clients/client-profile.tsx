@@ -14,6 +14,7 @@ import { Field, Rows } from "@/views/site/panel";
 export type ClientProfileData = {
   id: string;
   name: string;
+  publicCode: string;
   companyName: string;
   phone: string;
   email: string;
@@ -79,6 +80,7 @@ export function ClientProfile({
     >
       <Rows>
         <Field label="Name">{editing ? <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /> : <p>{draft.name || "—"}</p>}</Field>
+        <Field label="Client id">{editing ? <Input value={draft.publicCode} onChange={(event) => setDraft({ ...draft, publicCode: event.target.value.toUpperCase() })} /> : <p>{draft.publicCode || "—"}</p>}</Field>
         <Field label="Company">{editing ? <Input value={draft.companyName} onChange={(event) => setDraft({ ...draft, companyName: event.target.value })} /> : <p>{draft.companyName || "—"}</p>}</Field>
         <Field label="Phone">{editing ? <Input value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} /> : <p>{draft.phone || "—"}</p>}</Field>
         <Field label="Email">{editing ? <Input value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} /> : <p>{draft.email || "—"}</p>}</Field>

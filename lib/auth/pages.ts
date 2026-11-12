@@ -15,6 +15,7 @@ export const officePages = [
   { id: "clients", label: "Clients", group: "Work" },
   { id: "inventory", label: "Inventory", group: "Work" },
   { id: "rentals", label: "Rentals", group: "Work" },
+  { id: "attendance", label: "Attendance", group: "Work" },
   { id: "payroll", label: "Payroll", group: "Work" },
   { id: "subcontracts", label: "Subcontracts", group: "Work" },
   { id: "resort", label: "Resort", group: "Work" },
@@ -61,6 +62,7 @@ export function pageForPermission(permission: string) {
   if (permission.startsWith("clients.")) return "clients";
   if (permission.startsWith("inventory.")) return "inventory";
   if (permission.startsWith("rentals.")) return "rentals";
+  if (permission.startsWith("attendance.")) return "attendance";
   if (permission.startsWith("payroll.")) return "payroll";
   if (permission.startsWith("subcontracts.")) return "subcontracts";
   if (permission.startsWith("resort.")) return "resort";

@@ -60,8 +60,19 @@ export async function saveStaffAction(draft: StaffDraft, id?: string, inform?: b
   const requested = draft.accountRole ?? "";
   const accountRole = isEmployeeRole(requested) ? requested : "STAFF";
   const pageAccess = roleHasFullOffice(accountRole) ? [...allPageGrants] : [...new Set(draft.pageAccess ?? [])];
+  let publicCode = result.record.publicCode?.trim().toUpperCase() ?? "";
+  if (!id) {
+    const { allocatePublicCode } = await import("@/lib/records/public-code");
+    publicCode = await allocatePublicCode("employee", result.record.fullName);
+  } else if (publicCode) {
+    const { savePublicCode } = await import("@/lib/records/public-code");
+    const claimed = await savePublicCode("employee", result.record.id, publicCode);
+    if (!claimed.ok) return { ok: false as const, message: claimed.message };
+    publicCode = claimed.code;
+  }
   await upsertStaff({
     ...result.record,
+    publicCode,
     accountRole,
     pageAccess,
   });

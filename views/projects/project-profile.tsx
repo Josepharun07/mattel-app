@@ -16,6 +16,7 @@ import { Badge } from "@/views/ui/badge";
 type ProjectDraft = {
   id: string;
   name: string;
+  publicCode: string;
   location: string;
   status: "ACTIVE" | "COMPLETED";
   clientIds: string[];
@@ -85,6 +86,7 @@ export function ProjectProfile({
     setSaving(true);
     const result = await updateProject(draft.id, {
       name: draft.name,
+      publicCode: draft.publicCode,
       location: draft.location,
       status: draft.status,
       clientIds: draft.clientIds,
@@ -133,6 +135,7 @@ export function ProjectProfile({
     >
       <Rows>
         <Field label="Name">{editing ? <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /> : <p>{draft.name || "—"}</p>}</Field>
+        <Field label="Project id">{editing ? <Input value={draft.publicCode} onChange={(event) => setDraft({ ...draft, publicCode: event.target.value.toUpperCase() })} /> : <p>{draft.publicCode || "—"}</p>}</Field>
         <Field label="Location">{editing ? <Input value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} /> : <p>{draft.location || "—"}</p>}</Field>
         <Field label="Status">
           {editing ? (
@@ -224,7 +227,7 @@ export function ProjectProfile({
             <p className="text-sm text-muted-foreground">These are the lines still waiting to be invoiced. Select the ones this invoice should include.</p>
           </div>
           {selectedIds.length > 0 ? (
-            <Button type="button" onClick={() => router.push(`/invoices/create?project=${draft.id}&entries=${selectedIds.join(",")}`)}>Create invoice</Button>
+            <Button type="button" onClick={() => router.push(`/invoices/compose?project=${draft.id}&entries=${selectedIds.join(",")}`)}>Create invoice</Button>
           ) : null}
         </div>
         {admin ? (

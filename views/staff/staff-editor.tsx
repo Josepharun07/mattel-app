@@ -22,6 +22,7 @@ import type { StaffDirectory, StaffPhone, StaffRecord } from "@/lib/staff/direct
 function emptyDraft() {
   return {
     fullName: "",
+    publicCode: "",
     address: "",
     phones: [{ id: crypto.randomUUID(), label: "Mobile", number: "" }] as StaffPhone[],
     email: "",
@@ -45,6 +46,7 @@ function emptyDraft() {
 function fromRecord(person: StaffRecord) {
   return {
     ...person,
+    publicCode: person.publicCode ?? "",
     phones: person.phones.length > 0 ? person.phones : [{ id: crypto.randomUUID(), label: "Mobile", number: "" }],
   };
 }
@@ -134,6 +136,7 @@ export function StaffEditor({
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Personal information">
           <Line label="Full name" value={draft.fullName} editing={editing} onChange={(value) => set("fullName", value)} />
+          <Line label="Employee id" value={draft.publicCode ?? ""} editing={editing && !requestMode} onChange={(value) => set("publicCode", value.toUpperCase())} />
           <Line label="Blood group" value={draft.bloodGroup} editing={editing} onChange={(value) => set("bloodGroup", value)} />
           <Line label="PAN" value={draft.panNumber} editing={editing} onChange={(value) => set("panNumber", value)} />
           <Line label="Aadhaar" value={draft.aadhaarNumber} editing={editing} onChange={(value) => set("aadhaarNumber", value)} />

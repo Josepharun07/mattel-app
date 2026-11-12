@@ -59,9 +59,13 @@ export function calendarYear(date: Date | string = new Date()) {
   return date.getFullYear();
 }
 
-export function generateInvoiceNumber(type: "CON" | "RES", year: number, sequence: number) {
+export function generateDocumentNumber(partyCode: string, year: number, sequence: number) {
   const serial = String(Math.max(0, Math.trunc(sequence))).padStart(4, "0");
-  return `MI/${type}/${year}/${serial}`;
+  return `MI/${partyCode}/${year}/${serial}`;
+}
+
+export function generateInvoiceNumber(partyCode: string, year: number, sequence: number) {
+  return generateDocumentNumber(partyCode, year, sequence);
 }
 
 export function applyDocumentVersionSuffix(baseNumber: string, version: number) {

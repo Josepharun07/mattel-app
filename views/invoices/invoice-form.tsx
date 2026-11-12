@@ -148,25 +148,39 @@ export function InvoiceStudioProvider({
     },
   };
 
+  function partyCode(nextClientId = clientId, nextProjectId = projectId) {
+    const project = data.projects.find((entry) => entry.id === nextProjectId);
+    if (project?.publicCode) return project.publicCode;
+    return data.clients.find((entry) => entry.id === nextClientId)?.publicCode || "XXX1";
+  }
+
+  function refreshNumber(nextClientId: string, nextProjectId: string, date = issueDate) {
+    startNumber(async () => {
+      setInvoiceNumber(await getNextInvoiceNumber(partyCode(nextClientId, nextProjectId), date));
+    });
+  }
+
   function setClientId(nextClientId: string) {
     setClientIdState(nextClientId);
     const nextProject = data.projects.find((entry) => entry.clientIds.includes(nextClientId));
-    setProjectId(nextProject?.id ?? "");
+    const nextProjectId = nextProject?.id ?? "";
+    setProjectId(nextProjectId);
+    refreshNumber(nextClientId, nextProjectId);
+  }
+
+  function chooseProject(nextProjectId: string) {
+    setProjectId(nextProjectId);
+    refreshNumber(clientId, nextProjectId);
   }
 
   function setInvoiceType(type: "CON" | "RES") {
     setInvoiceTypeState(type);
-    startNumber(async () => {
-      setInvoiceNumber(await getNextInvoiceNumber(type, issueDate));
-    });
   }
 
   function changeIssueDate(value: string) {
     setIssueDate(value);
     if (value.slice(0, 4) !== issueDate.slice(0, 4)) {
-      startNumber(async () => {
-        setInvoiceNumber(await getNextInvoiceNumber(invoiceType, value));
-      });
+      refreshNumber(clientId, projectId, value);
     }
   }
 
@@ -214,7 +228,7 @@ export function InvoiceStudioProvider({
       });
       setSaveMessage(result.message);
       if (result.success) {
-        setInvoiceNumber(await getNextInvoiceNumber(invoiceType, issueDate));
+        setInvoiceNumber(await getNextInvoiceNumber(partyCode(), issueDate));
       }
     });
   }
@@ -226,7 +240,7 @@ export function InvoiceStudioProvider({
         clientId,
         setClientId,
         projectId,
-        setProjectId,
+        setProjectId: chooseProject,
         invoiceType,
         setInvoiceType,
         invoiceNumber,
@@ -315,8 +329,8 @@ export function InvoiceForm() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="CON">Construction · MI/CON</SelectItem>
-              <SelectItem value="RES">Resort · MI/RES</SelectItem>
+              <SelectItem value="CON">Construction</SelectItem>
+              <SelectItem value="RES">Resort</SelectItem>
             </SelectContent>
           </Select>
         </label>

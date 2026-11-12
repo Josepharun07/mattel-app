@@ -3,21 +3,18 @@
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePageState } from "@/lib/navigation/page-memory";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { AlertCircle, Calendar, CheckCircle2, Clock, DollarSign, UserCheck } from "lucide-react";
 import {
-  executeMidWeekCheckout,
   executeStaffSettlement,
-  executeWeeklyPayrollCycle,
-  executeWeeklyStaffSettlement,
   getWeeklyPayrollSummary,
   issueStaffAdvance,
   logDailyAttendance,
 } from "@/controllers/payroll";
 import { AttendanceGrid } from "@/views/payroll/attendance-grid";
-import { MidweekCheckoutModal } from "@/views/payroll/midweek-checkout-modal";
 import { SettlementCard } from "@/views/payroll/settlement-card";
-import { WeeklySummaryTable } from "@/views/payroll/weekly-summary-table";
+import { SettlementDrawer } from "@/views/payroll/settlement-drawer";
 import { Badge } from "@/views/ui/badge";
 import { Button } from "@/views/ui/button";
 import { useConfirm } from "@/views/shell/confirm";
@@ -25,11 +22,11 @@ import { Input } from "@/views/ui/input";
 import { Label } from "@/views/ui/label";
 import { formatInr } from "@/lib/money";
 import { mergeById, mergeCells } from "@/lib/payroll/merge";
-import { currentWeek, defaultCheckoutEnd, formatRangeLabel, listDates } from "@/lib/payroll/range";
+import { currentWeek, formatRangeLabel, listDates } from "@/lib/payroll/range";
 import { readPayrollSession, serverPayrollSession, subscribePayrollSession, writePayrollSession } from "@/lib/payroll/session";
-import { projectAccountSettlement, projectCheckout } from "@/lib/payroll/settle";
+import { buildSettlementPreview, projectAccountSettlement } from "@/lib/payroll/settle";
 import { summarizePayroll } from "@/lib/payroll/summarize";
-import type { AdvancePaymentMode, AdvanceRow, AttendanceCell, PayrollDashboard, PayrollSummaryRow, SettlementRow, StaffMember } from "@/lib/payroll/types";
+import type { AdvancePaymentMode, AdvanceRow, AttendanceCell, PayrollDashboard, SettlementRow, StaffMember } from "@/lib/payroll/types";
 
 type DeskState = {
   staff: StaffMember[];
@@ -40,17 +37,19 @@ type DeskState = {
   range: { start: string; end: string };
 };
 
-export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
+export function PayrollDesk({ initial, focus }: { initial: PayrollDashboard; focus: "attendance" | "payroll" }) {
+  const router = useRouter();
   const confirm = useConfirm();
   const session = useSyncExternalStore(subscribePayrollSession, readPayrollSession, serverPayrollSession);
   const [override, setOverride] = useState<DeskState | null>(null);
   const [draftStart, setDraftStart] = usePageState("start", initial.periodStart);
   const [draftEnd, setDraftEnd] = usePageState("end", initial.periodEnd);
-  const [checkoutStaff, setCheckoutStaff] = useState<StaffMember | null>(null);
+  const [settlingId, setSettlingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const staff = override?.staff ?? initial.staff;
+  const settling = staff.find((person) => person.id === settlingId) ?? null;
   const range = override?.range ?? { start: initial.periodStart, end: initial.periodEnd };
   const attendance = mergeCells(override?.attendance ?? initial.attendance, session.cells);
   const earlierUnsettled = mergeCells(
@@ -106,7 +105,8 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
         workDate,
         entries: entries.map((row) => ({
           staffId: row.staffId,
-          isPresent: row.isPresent,
+          isPresent: (row.dayFraction ?? (row.isPresent ? 1 : 0)) > 0,
+          dayFraction: row.dayFraction ?? (row.isPresent ? 1 : 0),
           overtimeHours: row.overtimeHours,
         })),
       });
@@ -157,138 +157,6 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
     setBusy(false);
   }
 
-  function stamp(settlement: SettlementRow, settledLogIds: string[], persist: boolean) {
-    const ids = new Set(settledLogIds);
-    const nextAttendance = attendance.map((cell) => (ids.has(cell.id) ? { ...cell, settlementId: settlement.id } : cell));
-    const nextSettlements = mergeById(settlements, [settlement]);
-    remember({ staff, attendance: nextAttendance, earlierUnsettled, settlements: nextSettlements, advances, range }, persist);
-  }
-
-  async function settlePerson(
-    person: StaffMember,
-    startDate: string,
-    endDate: string,
-    kind: "MID_WEEK_CHECKOUT" | "WEEKLY_CYCLED",
-    notes?: string,
-  ) {
-    const saved = await persistAttendance(attendance);
-    if (!saved.success && !saved.offline) {
-      return { ok: false, message: saved.message };
-    }
-    const result =
-      kind === "MID_WEEK_CHECKOUT"
-        ? await executeMidWeekCheckout(person.id, startDate, endDate, notes)
-        : await executeWeeklyStaffSettlement(person.id, startDate, endDate);
-    if (result.success && result.settlement && result.settledLogIds) {
-      stamp(result.settlement, result.settledLogIds, false);
-      return { ok: true, message: `${person.fullName} settled · ${formatInr(result.settlement.grossPayable)}.` };
-    }
-    if (result.offline) {
-      const projected = projectCheckout({
-        staff: person,
-        attendance,
-        startDate,
-        endDate,
-        checkoutType: kind,
-        notes,
-        takenPayslips: settlements.map((row) => row.basePayslipNumber).filter(Boolean),
-      });
-      if (!projected.ok) {
-        return projected;
-      }
-      stamp(projected.settlement, projected.settledLogIds, true);
-      return { ok: true, message: `${person.fullName} settled · ${formatInr(projected.settlement.grossPayable)}. Kept in this session.` };
-    }
-    return { ok: false, message: result.message };
-  }
-
-  async function settleRow(row: PayrollSummaryRow) {
-    const accepted = await confirm({ title: "Settle this person?", detail: "This closes the wages for the selected period." });
-    if (!accepted) return;
-    const person = staff.find((item) => item.id === row.staffId);
-    if (!person) {
-      return;
-    }
-    setBusy(true);
-    const result = await settlePerson(person, range.start, range.end, "WEEKLY_CYCLED");
-    setNotice(result.message);
-    setBusy(false);
-  }
-
-  async function confirmMidweek(startDate: string, endDate: string, notes: string) {
-    const accepted = await confirm({ title: "Check this person out mid-week?", detail: "This settles the days worked before the week ends." });
-    if (!accepted) return { ok: false, message: "Cancelled." };
-    if (!checkoutStaff) {
-      return { ok: false, message: "Choose a worker." };
-    }
-    setBusy(true);
-    const result = await settlePerson(checkoutStaff, startDate, endDate, "MID_WEEK_CHECKOUT", notes);
-    setNotice(result.message);
-    setBusy(false);
-    return result;
-  }
-
-  async function runCycle() {
-    const accepted = await confirm({ title: "Run the weekly payroll?", detail: "This settles every person who is ready for the week." });
-    if (!accepted) return;
-    setBusy(true);
-    const saved = await persistAttendance(attendance);
-    if (!saved.success && !saved.offline) {
-      setNotice(saved.message);
-      setBusy(false);
-      return;
-    }
-    const result = await executeWeeklyPayrollCycle(range.end);
-    if (result.success && result.applied) {
-      let nextAttendance = attendance;
-      let nextSettlements = settlements;
-      for (const item of result.applied) {
-        const ids = new Set(item.settledLogIds);
-        nextAttendance = nextAttendance.map((cell) =>
-          ids.has(cell.id) ? { ...cell, settlementId: item.settlement.id } : cell,
-        );
-        nextSettlements = mergeById(nextSettlements, [item.settlement]);
-      }
-      remember({ staff, attendance: nextAttendance, earlierUnsettled, settlements: nextSettlements, advances, range }, false);
-      setNotice(result.message);
-      setBusy(false);
-      return;
-    }
-    if (result.offline) {
-      let nextAttendance = attendance;
-      const created: SettlementRow[] = [];
-      const taken = settlements.map((row) => row.basePayslipNumber).filter(Boolean);
-      for (const person of staff) {
-        const projected = projectCheckout({
-          staff: person,
-          attendance: nextAttendance,
-          startDate: "1970-01-01",
-          endDate: range.end,
-          checkoutType: "WEEKLY_CYCLED",
-          notes: "Weekly payroll cycle",
-          takenPayslips: [...taken, ...created.map((row) => row.basePayslipNumber)],
-        });
-        if (!projected.ok) {
-          continue;
-        }
-        nextAttendance = projected.attendance;
-        created.push(projected.settlement);
-      }
-      if (created.length === 0) {
-        setNotice("No unsettled attendance to pay.");
-        setBusy(false);
-        return;
-      }
-      const nextSettlements = mergeById(settlements, created);
-      remember({ staff, attendance: nextAttendance, earlierUnsettled, settlements: nextSettlements, advances, range }, true);
-      setNotice(`Settled ${created.length} staff member${created.length === 1 ? "" : "s"}. Kept in this session.`);
-      setBusy(false);
-      return;
-    }
-    setNotice(result.message);
-    setBusy(false);
-  }
-
   async function issueAdvance(person: StaffMember, amount: number, paymentMode: AdvancePaymentMode, advanceNotes: string) {
     const accepted = await confirm({ title: "Record this advance?", detail: `This deducts the advance from ${person.fullName}'s next settlement.` });
     if (!accepted) return;
@@ -332,15 +200,15 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
   }
 
   async function completeSettlement(person: StaffMember, amount: number, slipNotes: string) {
-    const accepted = await confirm({ title: "Complete this settlement?", detail: `This records the payout for ${person.fullName}.` });
+    const accepted = await confirm({ title: "Submit this settlement?", detail: `This completes the payout for ${person.fullName} and emails the payslip.` });
     if (!accepted) return;
     setBusy(true);
     const result = await executeStaffSettlement(person.id, range.end, amount, slipNotes);
     if (result.success && result.settlement) {
       applyAccount(result.settlement, result.settledLogIds ?? [], result.settledAdvanceIds ?? [], false);
-      setNotice(`${person.fullName} settled · ${formatInr(result.settlement.amountPaid)} paid.`);
+      setNotice(result.message);
       setBusy(false);
-      return;
+      return true;
     }
     if (result.offline) {
       const projected = projectAccountSettlement({
@@ -360,11 +228,29 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
       applyAccount(projected.settlement, projected.settledLogIds, projected.settledAdvanceIds, true);
       setNotice(`${person.fullName} settled · ${formatInr(projected.settlement.amountPaid)} paid. Kept in this session.`);
       setBusy(false);
-      return;
+      return true;
     }
     setNotice(result.message);
     setBusy(false);
+    return false;
   }
+
+  const payrollRows = staff.map((person) => {
+    const preview = buildSettlementPreview({
+      staff: person,
+      attendance: settlementAttendance,
+      advances,
+      settlements,
+      endDate: range.end,
+    });
+    const paid = settlements
+      .filter((row) => row.staffId === person.id && row.status === "PAID" && row.periodStart <= range.end && row.periodEnd >= range.start)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const stillOpen = preview.daysPresent > 0 || preview.totalOvertimeHours > 0 || preview.currentCycleAdvances > 0 || preview.priorAdvanceCarryover > 0 || preview.priorBalanceCarryover > 0;
+    return { person, preview, paid, settled: Boolean(paid) && !stillOpen };
+  });
+  const openRows = payrollRows.filter((row) => !row.settled);
+  const settledRows = payrollRows.filter((row) => row.settled);
 
   return (
     <div className="space-y-5">
@@ -372,7 +258,7 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
         <div className="space-y-1">
           <p className="flex items-center gap-2 text-sm font-medium">
             <Calendar className="size-4" />
-            {onCurrentWeek ? "Weekly cycle · Monday–Sunday" : "Custom range"}
+            {onCurrentWeek ? "Week · Sunday–Saturday" : "Custom range"}
           </p>
           <p className="text-xs text-muted-foreground">{formatRangeLabel(range.start, range.end)}</p>
         </div>
@@ -400,14 +286,14 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
         >
           This week
         </Button>
-        <Button type="button" disabled={busy} onClick={() => void runCycle()}>
-          Run weekly cycle
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href="/payroll/settlements">Payout history</Link>
-        </Button>
+        {focus === "payroll" ? (
+          <Button variant="outline" asChild>
+            <Link href="/payroll/settlements">Payout history</Link>
+          </Button>
+        ) : null}
       </div>
 
+      {focus === "payroll" ? (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={<UserCheck className="size-4" />} label="Active staff" value={String(summary.activeStaff)} />
         <Metric icon={<Clock className="size-4" />} label="Unsettled hours" value={String(summary.unsettledHours)} hint="8 hours per present day plus overtime" />
@@ -419,10 +305,15 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
           badge={summary.settledThisMonth > 0 ? <Badge tone="success">Paid</Badge> : undefined}
         />
       </div>
+      ) : null}
 
+      {focus === "attendance" ? (
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Attendance</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Daily register</h2>
+            <p className="text-sm text-muted-foreground">Sunday starts off. Mark it only when someone works. A full day is 8 hours, a half day is half the daily rate, and overtime is extra.</p>
+          </div>
           <Button type="button" disabled={busy || gridDates.length === 0} onClick={() => void saveAttendance()}>
             Save attendance
           </Button>
@@ -436,54 +327,121 @@ export function PayrollDesk({ initial }: { initial: PayrollDashboard }) {
           <AttendanceGrid staff={staff} dates={gridDates} attendance={attendance} onChange={updateCell} />
         )}
       </section>
+      ) : null}
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Settlement</h2>
-        <p className="text-sm text-muted-foreground">
-          Unsettled days and advances accumulate until the period end, including weeks that were not closed on time.
-        </p>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {staff.map((person) => (
-            <SettlementCard
-              key={person.id}
-              person={person}
-              attendance={settlementAttendance}
-              advances={advances}
-              settlements={settlements}
-              periodEnd={range.end}
-              busy={busy}
-              onAdvance={(amount, paymentMode, advanceNotes) => issueAdvance(person, amount, paymentMode, advanceNotes)}
-              onSettle={(amount, slipNotes) => completeSettlement(person, amount, slipNotes)}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Weekly wages</h2>
-        <WeeklySummaryTable
-          rows={summary.rows}
-          busy={busy}
-          onMidWeek={(row) => setCheckoutStaff(staff.find((person) => person.id === row.staffId) ?? null)}
-          onWeeklySettle={(row) => void settleRow(row)}
-        />
-      </section>
+      {focus === "payroll" ? (
+      <>
+      <PayrollGroup
+        title="To settle"
+        detail="Settle one person, then move to the next. Sunday hours count only when attendance shows they worked."
+        rows={openRows}
+        empty="Everyone in this week is settled."
+        action={(person) => <Button type="button" size="sm" disabled={busy} onClick={() => setSettlingId(person.id)}>Settle</Button>}
+        onOpen={(person) => router.push(`/payroll/${person.id}`)}
+      />
+      <PayrollGroup
+        title="Settled"
+        detail="Payouts already completed for this week."
+        rows={settledRows}
+        empty="No one has been settled for this week yet."
+        action={() => <Badge tone="success">Paid</Badge>}
+        onOpen={(person) => router.push(`/payroll/${person.id}`)}
+      />
+      </>
+      ) : null}
 
       {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
 
-      {checkoutStaff ? (
-        <MidweekCheckoutModal
-          key={`${checkoutStaff.id}-${range.start}-${range.end}`}
-          staff={checkoutStaff}
-          attendance={attendance}
-          defaultStart={range.start}
-          defaultEnd={defaultCheckoutEnd(range.start, range.end)}
-          busy={busy}
-          onClose={() => setCheckoutStaff(null)}
-          onConfirm={confirmMidweek}
-        />
+      {settling ? (
+        <SettlementDrawer title={settling.fullName} onClose={() => setSettlingId(null)}>
+          <SettlementCard
+            key={settling.id}
+            person={settling}
+            attendance={settlementAttendance}
+            advances={advances}
+            settlements={settlements}
+            periodEnd={range.end}
+            busy={busy}
+            onAdvance={(amount, paymentMode, advanceNotes) => issueAdvance(settling, amount, paymentMode, advanceNotes)}
+            onSave={() => setNotice(`Saved ${settling.fullName}. Submit when the payout is ready.`)}
+            onSubmit={async (amount, slipNotes) => {
+              const done = await completeSettlement(settling, amount, slipNotes);
+              if (done) setSettlingId(null);
+            }}
+          />
+        </SettlementDrawer>
       ) : null}
     </div>
+  );
+}
+
+function PayrollGroup({
+  title,
+  detail,
+  rows,
+  empty,
+  action,
+  onOpen,
+}: {
+  title: string;
+  detail: string;
+  rows: {
+    person: StaffMember;
+    preview: { daysPresent: number; totalOvertimeHours: number; grossEarned: number; totalDeductions: number; netAmountDue: number };
+    paid?: SettlementRow;
+    settled: boolean;
+  }[];
+  empty: string;
+  action: (person: StaffMember) => ReactNode;
+  onOpen: (person: StaffMember) => void;
+}) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground">{detail}</p>
+      </div>
+      {rows.length === 0 ? <p className="rounded-xl border bg-white px-4 py-6 text-sm text-muted-foreground">{empty}</p> : (
+        <div className="overflow-x-auto rounded-xl border bg-white">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="px-4 py-3 font-medium">Employee</th>
+                <th className="px-4 py-3 font-medium">Days</th>
+                <th className="px-4 py-3 font-medium">Overtime hours</th>
+                <th className="px-4 py-3 font-medium">Gross</th>
+                <th className="px-4 py-3 font-medium">Advances</th>
+                <th className="px-4 py-3 font-medium">{rows[0]?.settled ? "Paid" : "Net due"}</th>
+                <th className="px-4 py-3 font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const days = row.settled ? row.paid?.daysPresent ?? 0 : row.preview.daysPresent;
+                const overtime = row.settled ? row.paid?.totalOvertimeHours ?? 0 : row.preview.totalOvertimeHours;
+                const gross = row.settled ? row.paid?.grossEarned ?? 0 : row.preview.grossEarned;
+                const advancesPaid = row.settled ? row.paid?.totalDeductions ?? 0 : row.preview.totalDeductions;
+                const money = row.settled ? row.paid?.amountPaid ?? 0 : row.preview.netAmountDue;
+                return (
+                  <tr key={row.person.id} className="cursor-pointer border-b last:border-b-0 hover:bg-slate-50" onClick={() => onOpen(row.person)}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{row.person.fullName}</p>
+                      <p className="text-xs text-muted-foreground">{row.person.role}</p>
+                    </td>
+                    <td className="px-4 py-3">{days}</td>
+                    <td className="px-4 py-3">{overtime}</td>
+                    <td className="px-4 py-3 font-mono">{formatInr(gross)}</td>
+                    <td className="px-4 py-3 font-mono">{formatInr(advancesPaid)}</td>
+                    <td className="px-4 py-3 font-mono font-medium">{formatInr(money)}</td>
+                    <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>{action(row.person)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

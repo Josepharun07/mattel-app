@@ -42,6 +42,7 @@ yarn-error.log*
 next-env.d.ts
 
 .dev_suite
+.*
 
 # Keep local notes out of the repository. README.md is the only markdown file that is tracked.
 *.md

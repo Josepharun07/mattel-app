@@ -12,6 +12,10 @@ describe("payroll range engine", () => {
   it("pays only unsettled present days inside the range", () => {
     expect(filterUnsettledAttendance(logs, "2026-10-05", "2026-10-07")).toHaveLength(2);
     expect(unsettledHoursWorked(logs, "2026-10-05", "2026-10-07")).toBe(10);
+    expect(calculateRangePayroll(900, 120, [...logs, { workDate: "2026-10-05", isPresent: true, dayFraction: 0.5, overtimeHours: 0, settlementId: null }], "2026-10-05", "2026-10-05")).toMatchObject({
+      daysPresent: 1.5,
+      basePay: 1350,
+    });
     expect(calculateRangePayroll(900, 120, logs, "2026-10-05", "2026-10-07")).toEqual({
       daysPresent: 1,
       totalOvertimeHours: 2,

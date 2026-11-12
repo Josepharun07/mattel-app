@@ -21,7 +21,7 @@ export default async function SettingsPage() {
       eyebrow="System"
       title="Settings"
       description="Company profile, the operating account, branding, measurement units, invoice defaults, the personal app colour, the database connection, and sign out."
-      width="narrow"
+      width="wide"
     >
       <SettingsDesk initial={settings} database={database} pages={session?.pages ?? []} />
     </PageFrame>

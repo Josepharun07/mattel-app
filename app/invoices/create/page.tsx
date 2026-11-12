@@ -16,11 +16,9 @@ export default async function CreateInvoicePage({ searchParams }: { searchParams
   if (denied) return denied;
   const query = await searchParams;
   const entryIds = (query.entries ?? "").split(",").map((id) => id.trim()).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
-  const [data, invoiceNumber, entries] = await Promise.all([
-    getInvoiceStudioData(),
-    getNextInvoiceNumber("CON"),
-    listOpenEntries(entryIds),
-  ]);
+  const [data, entries] = await Promise.all([getInvoiceStudioData(), listOpenEntries(entryIds)]);
+  const project = data.projects.find((item) => item.id === query.project);
+  const invoiceNumber = await getNextInvoiceNumber(project?.publicCode || data.clients[0]?.publicCode || "XXX1");
   const initialLines: InvoiceLine[] = entries.map((entry) => ({
     id: entry.id,
     projectEntryId: entry.id,

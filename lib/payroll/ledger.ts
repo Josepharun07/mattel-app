@@ -12,13 +12,16 @@ function money(amount: number) {
   return roundMoney(amount).toFixed(2);
 }
 
-async function allocatePayslip(executor: QueryExecutor, settlementDate: Date) {
+async function allocatePayslip(executor: QueryExecutor, settlementDate: Date, partyCode: string) {
+  const year = settlementDate.getFullYear();
+  const prefix = `MI/${partyCode}/${year}/`;
   const rows = await executor
     .select({ basePayslipNumber: payrollSettlements.basePayslipNumber })
     .from(payrollSettlements);
   return issuePayslipNumber(
-    rows.map((row) => row.basePayslipNumber),
+    rows.map((row) => row.basePayslipNumber).filter((value) => value.startsWith(prefix)),
     settlementDate,
+    partyCode,
   );
 }
 
@@ -69,6 +72,7 @@ export async function writeSettlement(
     logs.map((log) => ({
       workDate: dateKey(log.workDate),
       isPresent: log.isPresent,
+      dayFraction: Number(log.dayFraction),
       overtimeHours: Number(log.overtimeHours),
       settlementId: log.settlementId,
     })),
@@ -86,7 +90,7 @@ export async function writeSettlement(
     priorAdvanceCarryover: 0,
     currentCycleAdvances: 0,
   });
-  const slip = await allocatePayslip(executor, new Date());
+  const slip = await allocatePayslip(executor, new Date(), person.publicCode || "EMP1");
 
   const [created] = await executor
     .insert(payrollSettlements)
@@ -209,6 +213,7 @@ export async function writeAccountSettlement(
       staffId: log.staffId,
       workDate: dateKey(log.workDate),
       isPresent: log.isPresent,
+      dayFraction: Number(log.dayFraction),
       overtimeHours: Number(log.overtimeHours),
       settlementId: log.settlementId,
     })),
@@ -261,7 +266,7 @@ export async function writeAccountSettlement(
   }
 
   const settlementDate = new Date();
-  const slip = await allocatePayslip(executor, settlementDate);
+  const slip = await allocatePayslip(executor, settlementDate, person.publicCode || "EMP1");
   const [created] = await executor
     .insert(payrollSettlements)
     .values({

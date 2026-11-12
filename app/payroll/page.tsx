@@ -17,11 +17,11 @@ export default async function PayrollPage() {
   return (
     <PageFrame
       eyebrow="Workforce"
-      title="Attendance and payroll"
-      description="Mark daily presence and overtime, then settle a mid-week checkout or the Monday–Sunday cycle. Settled days stay locked."
+      title="Payroll"
+      description="Settle one person at a time for the Sunday–Saturday week. Sunday is the usual off day unless attendance shows they worked."
       width="wide"
     >
-      <PayrollDesk initial={dashboard} />
+      <PayrollDesk initial={dashboard} focus="payroll" />
     </PageFrame>
   );
 }

@@ -52,6 +52,7 @@ export async function findClient(id: string) {
     client: {
       id: client.id,
       name: client.name,
+      publicCode: client.publicCode ?? "",
       companyName: client.companyName ?? "",
       phone: client.phone,
       email: client.email ?? "",

@@ -3,6 +3,15 @@ import { roundMoney } from "@/lib/money";
 export interface AttendanceRecord {
   isPresent: boolean;
   overtimeHours: number;
+  dayFraction?: number;
+}
+
+export function dayFractionOf(record: AttendanceRecord) {
+  if (!record.isPresent) return 0;
+  if (typeof record.dayFraction === "number" && Number.isFinite(record.dayFraction)) {
+    return Math.min(1, Math.max(0, record.dayFraction));
+  }
+  return 1;
 }
 
 export interface PayrollResult {
@@ -22,8 +31,9 @@ export function calculateStaffPayroll(
   let totalOvertimeHours = 0;
 
   for (const record of records) {
-    if (record.isPresent) {
-      daysPresent += 1;
+    const fraction = dayFractionOf(record);
+    if (fraction > 0) {
+      daysPresent += fraction;
       totalOvertimeHours += record.overtimeHours || 0;
     }
   }
@@ -128,9 +138,9 @@ export function closeSettlement(input: SettlementClosingInput): SettlementClosin
   };
 }
 
-export function generatePayslipNumber(year: number, sequence: number) {
+export function generatePayslipNumber(partyCode: string, year: number, sequence: number) {
   const serial = String(Math.max(0, Math.trunc(sequence))).padStart(4, "0");
-  return `MI/PAY/${year}/${serial}`;
+  return `MI/${partyCode}/${year}/${serial}`;
 }
 
 export function applyPayslipVersionSuffix(baseNumber: string, version: number) {
@@ -140,10 +150,10 @@ export function applyPayslipVersionSuffix(baseNumber: string, version: number) {
   return `${baseNumber}-v${version}`;
 }
 
-export function issuePayslipNumber(takenBaseNumbers: string[], settlementDate: Date | string) {
+export function issuePayslipNumber(takenBaseNumbers: string[], settlementDate: Date | string, partyCode = "EMP1") {
   const year = typeof settlementDate === "string" ? Number(settlementDate.slice(0, 4)) : settlementDate.getFullYear();
   const safeYear = Number.isFinite(year) && year > 0 ? year : new Date().getFullYear();
-  const prefix = `MI/PAY/${safeYear}/`;
+  const prefix = `MI/${partyCode}/${safeYear}/`;
   const maxSequence = takenBaseNumbers.reduce((max, value) => {
     if (!value?.startsWith(prefix)) {
       return max;
@@ -151,7 +161,7 @@ export function issuePayslipNumber(takenBaseNumbers: string[], settlementDate: D
     const sequence = Number(value.slice(prefix.length).split("-v")[0]);
     return Number.isFinite(sequence) ? Math.max(max, sequence) : max;
   }, 0);
-  const basePayslipNumber = generatePayslipNumber(safeYear, maxSequence + 1);
+  const basePayslipNumber = generatePayslipNumber(partyCode, safeYear, maxSequence + 1);
   return { basePayslipNumber, payslipNumber: basePayslipNumber, version: 0 };
 }
 
@@ -191,13 +201,14 @@ export function unsettledHoursWorked(
 ): number {
   let hours = 0;
   for (const record of records) {
-    if (record.settlementId || !record.isPresent) {
+    const fraction = dayFractionOf(record);
+    if (record.settlementId || fraction <= 0) {
       continue;
     }
     if (record.workDate < startDate || record.workDate > endDate) {
       continue;
     }
-    hours += STANDARD_SHIFT_HOURS + (record.overtimeHours || 0);
+    hours += STANDARD_SHIFT_HOURS * fraction + (record.overtimeHours || 0);
   }
   return roundMoney(hours);
 }

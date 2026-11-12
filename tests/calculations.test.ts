@@ -84,8 +84,8 @@ describe("calculateInvoiceTotals", () => {
 
 describe("formatInvoiceNumber", () => {
   it("uses the calendar year of the issue date", () => {
-    expect(formatInvoiceNumber("CONSTRUCTION", 1, new Date(2026, 2, 15))).toBe("MI/CON/2026/0001");
-    expect(formatInvoiceNumber("RESORT", 12, new Date(2026, 9, 7))).toBe("MI/RES/2026/0012");
+    expect(formatInvoiceNumber("TES1", 1, new Date(2026, 2, 15))).toBe("MI/TES1/2026/0001");
+    expect(formatInvoiceNumber("RES1", 12, new Date(2026, 9, 7))).toBe("MI/RES1/2026/0012");
   });
 });
 

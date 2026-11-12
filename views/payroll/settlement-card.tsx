@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { buildSettlementPreview } from "@/lib/payroll/settle";
 import { closeSettlement } from "@/lib/engines/payroll-engine";
 import { formatInr } from "@/lib/money";
@@ -17,7 +17,8 @@ export function SettlementCard({
   periodEnd,
   busy,
   onAdvance,
-  onSettle,
+  onSave,
+  onSubmit,
 }: {
   person: StaffMember;
   attendance: AttendanceCell[];
@@ -26,12 +27,14 @@ export function SettlementCard({
   periodEnd: string;
   busy: boolean;
   onAdvance: (amount: number, paymentMode: AdvancePaymentMode, notes: string) => Promise<void>;
-  onSettle: (amount: number, notes: string) => Promise<void>;
+  onSave: (amount: number, notes: string) => void;
+  onSubmit: (amount: number, notes: string) => Promise<void>;
 }) {
   const preview = buildSettlementPreview({ staff: person, attendance, advances, settlements, endDate: periodEnd });
   const [amount, setAmount] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const [advanceAmount, setAdvanceAmount] = useState("500");
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [saved, setSaved] = useState(false);
   const [paymentMode, setPaymentMode] = useState<AdvancePaymentMode>("CASH");
   const paying = Number(amount ?? preview.netAmountDue);
   const live = closeSettlement({
@@ -48,17 +51,22 @@ export function SettlementCard({
         ? `New advance ${formatInr(live.newAdvanceCarryover)} carried to the next cycle`
         : "Account settles in full";
 
-  async function issueAdvance(event: FormEvent) {
-    event.preventDefault();
-    await onAdvance(Number(advanceAmount), paymentMode, "Mid-cycle advance");
+  async function save() {
+    const advance = Number(advanceAmount);
+    if (Number.isFinite(advance) && advance > 0) {
+      await onAdvance(advance, paymentMode, "Mid-cycle advance");
+      setAdvanceAmount("");
+    }
+    onSave(Number.isFinite(paying) ? paying : 0, notes);
+    setSaved(true);
   }
 
   return (
-    <article className="space-y-3 rounded-xl border bg-white p-4">
+    <article className="space-y-3">
       <div>
         <h3 className="font-semibold">{person.fullName}</h3>
         <p className="text-xs text-muted-foreground">
-          {preview.daysPresent} unsettled days through {periodEnd} · {preview.totalOvertimeHours} OT hours
+          {preview.daysPresent} unsettled days through {periodEnd} · {preview.totalOvertimeHours} overtime hours
         </p>
       </div>
       <dl className="grid grid-cols-2 gap-2 text-sm">
@@ -86,13 +94,10 @@ export function SettlementCard({
         <Label>Slip note</Label>
         <Input value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
-      <Button type="button" disabled={busy} onClick={() => void onSettle(Number.isFinite(paying) ? paying : 0, notes)}>
-        Complete settlement and issue slip
-      </Button>
-      <form className="flex flex-wrap items-end gap-2 border-t pt-3" onSubmit={issueAdvance}>
+      <div className="flex flex-wrap items-end gap-2 border-t pt-3">
         <label className="space-y-1 text-sm">
           <Label>Advance</Label>
-          <Input className="w-28 font-mono" value={advanceAmount} onChange={(event) => setAdvanceAmount(event.target.value)} />
+          <Input className="w-28 font-mono" placeholder="0" value={advanceAmount} onChange={(event) => setAdvanceAmount(event.target.value)} />
         </label>
         <label className="space-y-1 text-sm">
           <Label>Mode</Label>
@@ -106,10 +111,12 @@ export function SettlementCard({
             <option value="BANK_TRANSFER">Bank transfer</option>
           </select>
         </label>
-        <Button type="submit" variant="outline" disabled={busy}>
-          Issue advance
-        </Button>
-      </form>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={busy} onClick={() => void save()}>Save</Button>
+        <Button type="button" disabled={busy} onClick={() => void onSubmit(Number.isFinite(paying) ? paying : 0, notes)}>Submit</Button>
+      </div>
+      {saved ? <p className="text-sm text-muted-foreground">Saved on this settlement. Submit writes the payout and emails the payslip.</p> : null}
     </article>
   );
 }

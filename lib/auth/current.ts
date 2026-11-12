@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { appSessions, appUsers, staff } from "@/db/schema";
+import { attachStaffProfile } from "@/lib/auth/ensure-admin";
 import { roleHasFullOffice } from "@/lib/auth/pages";
 import type { AccessRole } from "@/lib/settings/appearance";
 
@@ -49,22 +50,23 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
     return null;
   }
   const role = row.role === "OPERATOR" || row.role === "MANAGER" || row.role === "OWNER" || row.role === "SUPER_ADMIN" ? row.role : null;
+  const staffId = await attachStaffProfile(db, { id: row.userId, username: row.username, name: row.name, role, staffId: row.staffId });
   if (role === "OWNER" || role === "SUPER_ADMIN") {
-    return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId: row.staffId, pages: "all" };
+    return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId, pages: "all" };
   }
   let pages: string[] = [];
-  if (row.staffId) {
+  if (staffId) {
     const [person] = await db
       .select({ accountRole: staff.accountRole, pageAccess: staff.pageAccess })
       .from(staff)
-      .where(eq(staff.id, row.staffId))
+      .where(eq(staff.id, staffId))
       .limit(1);
     if (person && roleHasFullOffice(person.accountRole)) {
-      return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId: row.staffId, pages: "all" };
+      return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId, pages: "all" };
     }
     pages = person?.pageAccess ?? [];
   }
-  return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId: row.staffId, pages };
+  return { userId: row.userId, username: row.username, name: row.name, kind: row.kind, role, staffId, pages };
 }
 
 export async function startSession(userId: string) {

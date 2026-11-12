@@ -30,6 +30,7 @@ import { defaultSystemSettings } from "@/lib/settings/profile";
 
 export type InvoiceClientOption = {
   id: string;
+  publicCode: string;
   name: string;
   address: string | null;
   gstin: string | null;
@@ -39,6 +40,7 @@ export type InvoiceClientOption = {
 
 export type InvoiceProjectOption = {
   id: string;
+  publicCode: string;
   clientId: string;
   clientIds: string[];
   name: string;
@@ -146,6 +148,7 @@ export async function getInvoiceStudioData(): Promise<InvoiceStudioData> {
       unitTypes: settings?.unitTypes?.length ? settings.unitTypes : [],
       clients: clientRows.map((client) => ({
         id: client.id,
+        publicCode: client.publicCode ?? "",
         name: client.name,
         address: client.address,
         gstin: client.gstin,
@@ -154,6 +157,7 @@ export async function getInvoiceStudioData(): Promise<InvoiceStudioData> {
       })),
       projects: projectRows.map((project) => ({
         id: project.id,
+        publicCode: project.publicCode ?? "",
         clientId: project.clientId,
         clientIds: clientIdsByProject.get(project.id) ?? [project.clientId],
         name: project.name || project.title,
@@ -172,13 +176,14 @@ export async function getInvoiceStudioData(): Promise<InvoiceStudioData> {
   }
 }
 
-export async function getNextInvoiceNumber(type: "CON" | "RES", issueDate?: string | Date) {
+export async function getNextInvoiceNumber(partyCode: string, issueDate?: string | Date) {
   if (!(await allowed("invoices.read"))) return "";
   const year = calendarYear(issueDate ?? new Date());
-  const prefix = `MI/${type}/${year}/`;
+  const code = partyCode.trim() || "XXX1";
+  const prefix = `MI/${code}/${year}/`;
 
   if (!process.env.DATABASE_URL) {
-    return generateInvoiceNumber(type, year, 1);
+    return generateInvoiceNumber(code, year, 1);
   }
 
   try {
@@ -192,9 +197,9 @@ export async function getNextInvoiceNumber(type: "CON" | "RES", issueDate?: stri
       0,
     );
 
-    return generateInvoiceNumber(type, year, maxSequence + 1);
+    return generateInvoiceNumber(code, year, maxSequence + 1);
   } catch {
-    return generateInvoiceNumber(type, year, 1);
+    return generateInvoiceNumber(code, year, 1);
   }
 }
 
@@ -221,6 +226,8 @@ const invoicePayload = z.object({
   gstEnabled: z.boolean(),
   isInterstate: z.boolean(),
   terms: z.string().trim().optional(),
+  asDraft: z.boolean().optional(),
+  invoiceName: z.string().trim().optional(),
   lines: z.array(lineSchema).min(1),
 });
 
@@ -263,8 +270,9 @@ export async function createInvoice(payload: CreateInvoicePayload) {
         .values({
           baseInvoiceNumber,
           invoiceNumber: baseInvoiceNumber,
+          invoiceName: parsed.data.invoiceName ?? "",
           version: 0,
-          isFinalized: true,
+          isFinalized: parsed.data.asDraft === true ? false : true,
           clientId: parsed.data.clientId,
           projectId: parsed.data.projectId,
           invoiceType: parsed.data.invoiceType === "RES" ? "RESORT" : "CONSTRUCTION",
@@ -311,6 +319,7 @@ export async function createInvoice(payload: CreateInvoicePayload) {
         await tx.insert(ledgerEntries).values({
           projectId: parsed.data.projectId,
           invoiceId: invoice.id,
+          inventoryItemId: line.inventoryItemId,
           materialName: line.name,
           quantity: money(line.quantity),
           unitType: line.unitType,
@@ -329,7 +338,7 @@ export async function createInvoice(payload: CreateInvoicePayload) {
             .where(eq(projectEntries.id, line.projectEntryId));
         }
 
-        if (!line.inventoryItemId) {
+        if (!line.inventoryItemId || parsed.data.asDraft === true) {
           continue;
         }
 
@@ -352,7 +361,7 @@ export async function createInvoice(payload: CreateInvoicePayload) {
 
     return {
       success: true,
-      message: "Invoice saved.",
+      message: parsed.data.asDraft === true ? "Draft saved." : "Invoice saved.",
       data: { id: created.id, invoiceNumber: baseDocumentNumber(parsed.data.invoiceNumber), total: totals.total },
     };
   } catch (error) {
@@ -363,106 +372,190 @@ export async function createInvoice(payload: CreateInvoicePayload) {
 
 const revisionPayload = invoicePayload.omit({ invoiceNumber: true });
 
-export async function updateFinalizedInvoice(invoiceId: string, updatedPayload: z.infer<typeof revisionPayload>) {
-  if (!(await allowed("invoices.write"))) return { success: false as const, message: "You do not have access to this." };
-  const parsed = revisionPayload.safeParse(updatedPayload);
-  if (!invoiceId || !parsed.success) {
-    return { success: false as const, message: "Complete the revised client, date, and line items." };
-  }
-  if (!process.env.DATABASE_URL) {
-    return {
-      success: false as const,
-      offline: true,
-      message: "DATABASE_URL is not configured. This revision stays in this session.",
-    };
-  }
-  if (!z.uuid().safeParse(invoiceId).success) {
-    return { success: false as const, message: "Choose a saved invoice." };
-  }
-
-  const totals = calculateInvoiceTotals(
-    parsed.data.lines.map((line) => ({
-      quantity: line.quantity,
-      centralRate: line.centralRate,
-      overrideRate: line.overrideRate,
+export async function getInvoiceDocument(id: string) {
+  if (!(await allowed("invoices.read")) || !z.uuid().safeParse(id).success || !process.env.DATABASE_URL) return null;
+  const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), isNull(invoices.deletedAt))).limit(1);
+  if (!invoice) return null;
+  const [lineRows, clientRow, projectRow, linked] = await Promise.all([
+    db.select().from(ledgerEntries).where(and(eq(ledgerEntries.invoiceId, id), isNull(ledgerEntries.deletedAt))),
+    invoice.clientId ? db.select().from(clients).where(eq(clients.id, invoice.clientId)).limit(1) : Promise.resolve([]),
+    invoice.projectId ? db.select().from(projects).where(eq(projects.id, invoice.projectId)).limit(1) : Promise.resolve([]),
+    invoice.projectId
+      ? db.select({ id: clients.id, name: clients.name, address: clients.address, gstin: clients.gstin }).from(projectClients).innerJoin(clients, eq(clients.id, projectClients.clientId)).where(eq(projectClients.projectId, invoice.projectId))
+      : Promise.resolve([]),
+  ]);
+  const client = clientRow[0];
+  const project = projectRow[0];
+  return {
+    id: invoice.id,
+    projectId: invoice.projectId,
+    projectName: project?.name || project?.title || "",
+    invoiceName: invoice.invoiceName,
+    invoiceNumber: invoice.invoiceNumber,
+    issueDate: invoice.issueDate,
+    transitPassNo: invoice.transitPassNo ?? "",
+    ewayBillNo: invoice.ewayBillNo ?? "",
+    terms: invoice.notes ?? "",
+    gstEnabled: Number(invoice.cgstAmount) > 0 || Number(invoice.sgstAmount) > 0 || Number(invoice.igstAmount) > 0,
+    interstate: Number(invoice.igstAmount) > 0,
+    finalized: invoice.isFinalized,
+    clientId: invoice.clientId ?? "",
+    clients: (linked.length > 0 ? linked : client ? [{ id: client.id, name: client.name, address: client.address, gstin: client.gstin }] : []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      address: item.address ?? "",
+      gstin: item.gstin ?? "",
     })),
+    lines: lineRows.map((line) => ({
+      id: line.id,
+      name: line.materialName,
+      unit: line.unitType,
+      quantity: String(Number(line.quantity)),
+      rate: String(Number(line.overrideRate || line.centralRate)),
+    })),
+  };
+}
+
+export async function saveDraftInvoice(id: string, payload: CreateInvoicePayload) {
+  if (!(await allowed("invoices.write"))) return { success: false as const, message: "You do not have access to this." };
+  const parsed = invoicePayload.safeParse(payload);
+  if (!z.uuid().safeParse(id).success || !parsed.success) {
+    return { success: false as const, message: "Complete the draft before saving." };
+  }
+  const [existing] = await db.select().from(invoices).where(and(eq(invoices.id, id), isNull(invoices.deletedAt))).limit(1);
+  if (!existing) return { success: false as const, message: "That invoice was not found." };
+  if (existing.isFinalized) return { success: false as const, message: "A finished invoice cannot be edited." };
+  const totals = calculateInvoiceTotals(
+    parsed.data.lines.map((line) => ({ quantity: line.quantity, centralRate: line.centralRate, overrideRate: line.overrideRate })),
     { gstEnabled: parsed.data.gstEnabled, isInterstate: parsed.data.isInterstate },
   );
-
-  try {
-    const [existing] = await db
-      .select()
-      .from(invoices)
-      .where(and(eq(invoices.id, invoiceId), isNull(invoices.deletedAt)));
-    if (!existing) {
-      return { success: false as const, message: "That invoice was not found." };
+  await db.transaction(async (tx) => {
+    await tx.update(invoices).set({
+      invoiceName: parsed.data.invoiceName ?? existing.invoiceName,
+      clientId: parsed.data.clientId,
+      issueDate: parsed.data.issueDate,
+      transitPassNo: parsed.data.transitPassNo,
+      ewayBillNo: parsed.data.ewayBillNo,
+      notes: parsed.data.terms,
+      subtotal: money(totals.subtotal),
+      cgstAmount: money(totals.cgst),
+      sgstAmount: money(totals.sgst),
+      igstAmount: money(totals.igst),
+      totalAmount: money(totals.total),
+      cgst: money(totals.cgst),
+      sgst: money(totals.sgst),
+      igst: money(totals.igst),
+      grandTotal: money(totals.total),
+      isFinalized: false,
+    }).where(eq(invoices.id, id));
+    await tx.update(ledgerEntries).set({ deletedAt: new Date() }).where(and(eq(ledgerEntries.invoiceId, id), isNull(ledgerEntries.deletedAt)));
+    for (const line of parsed.data.lines) {
+      const effectiveRate = line.overrideRate ?? line.centralRate;
+      await tx.insert(ledgerEntries).values({
+        projectId: existing.projectId,
+        invoiceId: id,
+        inventoryItemId: line.inventoryItemId,
+        materialName: line.name,
+        quantity: money(line.quantity),
+        unitType: line.unitType,
+        centralRate: money(line.centralRate),
+        overrideRate: money(effectiveRate),
+        totalPrice: money(roundMoney(line.quantity * effectiveRate)),
+        source: "DIRECT",
+      });
     }
+  });
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${id}`);
+  return { success: true as const, message: "Draft saved." };
+}
 
-    const newVersion = existing.version + 1;
-    const invoiceNumber = applyDocumentVersionSuffix(existing.baseInvoiceNumber, newVersion);
+export async function renameInvoice(id: string, invoiceName: string) {
+  if (!(await allowed("invoices.write"))) return { success: false as const, message: "You do not have access to this." };
+  if (!z.uuid().safeParse(id).success) return { success: false as const, message: "That invoice was not found." };
+  const name = invoiceName.trim();
+  const updated = await db.update(invoices).set({ invoiceName: name }).where(and(eq(invoices.id, id), isNull(invoices.deletedAt))).returning({ id: invoices.id });
+  if (updated.length === 0) return { success: false as const, message: "That invoice was not found." };
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${id}`);
+  return { success: true as const, message: "Invoice name saved." };
+}
 
-    await db.transaction(async (tx) => {
-      await tx
-        .update(invoices)
-        .set({
-          invoiceNumber,
-          version: newVersion,
-          isFinalized: true,
-          clientId: parsed.data.clientId,
-          projectId: parsed.data.projectId,
-          invoiceType: parsed.data.invoiceType === "RES" ? "RESORT" : "CONSTRUCTION",
-          issueDate: parsed.data.issueDate,
-          subtotal: money(totals.subtotal),
-          cgstAmount: money(totals.cgst),
-          sgstAmount: money(totals.sgst),
-          igstAmount: money(totals.igst),
-          totalAmount: money(totals.total),
-          cgst: money(totals.cgst),
-          sgst: money(totals.sgst),
-          igst: money(totals.igst),
-          grandTotal: money(totals.total),
-          transitPassNo: parsed.data.transitPassNo,
-          ewayBillNo: parsed.data.ewayBillNo,
-          letterheadMode: true,
-          stationeryMode: false,
-          notes: parsed.data.terms,
-        })
-        .where(eq(invoices.id, existing.id));
+export async function finalizeInvoice(id: string) {
+  if (!(await allowed("invoices.write"))) return { success: false as const, message: "You do not have access to this." };
+  const [existing] = await db.select().from(invoices).where(and(eq(invoices.id, id), isNull(invoices.deletedAt))).limit(1);
+  if (!existing) return { success: false as const, message: "That invoice was not found." };
+  if (existing.isFinalized) return { success: false as const, message: "This invoice is already finished." };
+  await db.update(invoices).set({ isFinalized: true }).where(eq(invoices.id, id));
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${id}`);
+  return { success: true as const, message: "Invoice finished. It can no longer be edited." };
+}
 
-      await tx
-        .update(ledgerEntries)
-        .set({ deletedAt: new Date() })
-        .where(and(eq(ledgerEntries.invoiceId, existing.id), isNull(ledgerEntries.deletedAt)));
-
-      for (const line of parsed.data.lines) {
-        const effectiveRate = line.overrideRate ?? line.centralRate;
-        await tx.insert(ledgerEntries).values({
-          projectId: parsed.data.projectId,
-          invoiceId: existing.id,
-          materialName: line.name,
-          quantity: money(line.quantity),
-          unitType: line.unitType,
-          centralRate: money(line.centralRate),
-          overrideRate: money(effectiveRate),
-          totalPrice: money(roundMoney(line.quantity * effectiveRate)),
-          transitPassNumber: parsed.data.transitPassNo,
-          ewayBillNumber: parsed.data.ewayBillNo,
-          source: "DIRECT",
-        });
-      }
-    });
-
-    revalidatePath("/invoices");
-    revalidatePath(`/invoices/${invoiceId}`);
-    revalidatePath("/invoices/create");
-    return {
-      success: true as const,
-      message: `Invoice revised to ${invoiceNumber}.`,
+export async function reviseFinishedInvoice(id: string) {
+  if (!(await allowed("invoices.write"))) return { success: false as const, message: "You do not have access to this." };
+  const [existing] = await db.select().from(invoices).where(and(eq(invoices.id, id), isNull(invoices.deletedAt))).limit(1);
+  if (!existing) return { success: false as const, message: "That invoice was not found." };
+  if (!existing.isFinalized) return { success: false as const, message: "Open the draft to edit it. A new version is only made from a finished invoice." };
+  const family = await db.select({ version: invoices.version }).from(invoices).where(and(eq(invoices.baseInvoiceNumber, existing.baseInvoiceNumber), isNull(invoices.deletedAt)));
+  const nextVersion = family.reduce((max, row) => Math.max(max, row.version), 0) + 1;
+  const invoiceNumber = applyDocumentVersionSuffix(existing.baseInvoiceNumber, nextVersion);
+  const lines = await db.select().from(ledgerEntries).where(and(eq(ledgerEntries.invoiceId, existing.id), isNull(ledgerEntries.deletedAt)));
+  const [created] = await db.transaction(async (tx) => {
+    const inserted = await tx.insert(invoices).values({
+      baseInvoiceNumber: existing.baseInvoiceNumber,
       invoiceNumber,
-      version: newVersion,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not revise the invoice.";
-    return { success: false as const, message };
-  }
+      invoiceName: existing.invoiceName,
+      version: nextVersion,
+      isFinalized: false,
+      clientId: existing.clientId,
+      projectId: existing.projectId,
+      resortLeaseId: existing.resortLeaseId,
+      billingPeriod: existing.billingPeriod,
+      invoiceType: existing.invoiceType,
+      issueDate: existing.issueDate,
+      dueDate: existing.dueDate,
+      subtotal: existing.subtotal,
+      cgstAmount: existing.cgstAmount,
+      sgstAmount: existing.sgstAmount,
+      igstAmount: existing.igstAmount,
+      totalAmount: existing.totalAmount,
+      cgst: existing.cgst,
+      sgst: existing.sgst,
+      igst: existing.igst,
+      grandTotal: existing.grandTotal,
+      amountPaid: "0.00",
+      paymentStatus: "Unpaid",
+      transitPassNo: existing.transitPassNo,
+      ewayBillNo: existing.ewayBillNo,
+      letterheadMode: true,
+      stationeryMode: false,
+      notes: existing.notes,
+    }).returning({ id: invoices.id });
+    if (lines.length > 0) {
+      await tx.insert(ledgerEntries).values(lines.map((line) => ({
+        projectId: line.projectId,
+        invoiceId: inserted[0].id,
+        inventoryItemId: line.inventoryItemId,
+        materialName: line.materialName,
+        quantity: line.quantity,
+        unitType: line.unitType,
+        centralRate: line.centralRate,
+        overrideRate: line.overrideRate,
+        totalPrice: line.totalPrice,
+        finalPrice: line.finalPrice,
+        source: line.source,
+      })));
+    }
+    return inserted;
+  });
+  revalidatePath("/invoices");
+  return { success: true as const, message: `Draft ${invoiceNumber} created. The finished invoice was left unchanged.`, data: { id: created.id } };
+}
+
+export async function updateFinalizedInvoice(invoiceId: string, updatedPayload: z.infer<typeof revisionPayload>) {
+  if (!(await allowed("invoices.write"))) return { success: false as const, message: "You do not have access to this." };
+  void updatedPayload;
+  void invoiceId;
+  return { success: false as const, message: "A finished invoice cannot be edited. Start a new version instead." };
 }
