@@ -52,10 +52,10 @@ function ResetForm({ token }: { token: string }) {
 }
 
 function SignInForm() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState(false);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas px-6">
@@ -64,12 +64,20 @@ function SignInForm() {
         onSubmit={(event) => {
           event.preventDefault();
           void (async () => {
-            const result = await signInAction(username, password);
-            if (result.ok) {
-              router.refresh();
-              return;
+            setPending(true);
+            setNotice("");
+            try {
+              const result = await signInAction(username, password);
+              if (result.ok) {
+                window.location.assign("/");
+                return;
+              }
+              setNotice(result.message);
+            } catch {
+              setNotice("Sign in could not be completed. Check the database connection on the server.");
+            } finally {
+              setPending(false);
             }
-            setNotice(result.message);
           })();
         }}
       >
@@ -79,17 +87,17 @@ function SignInForm() {
           Sign in to invoices, payroll, and the yard.
         </p>
         <label className="block space-y-1 text-sm">
-          <Label htmlFor="username">Username</Label>
-          <Input id="username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} />
+          <Label htmlFor="username">Email</Label>
+          <Input id="username" type="email" autoComplete="email" value={username} onChange={(event) => setUsername(event.target.value)} />
         </label>
         <label className="block space-y-1 text-sm">
           <Label htmlFor="password">Password</Label>
           <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
-        <Button type="submit" className="w-full">
-          Sign in
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending ? "Signing in" : "Sign in"}
         </Button>
-        {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
+        {notice ? <p className="text-sm text-destructive">{notice}</p> : null}
       </form>
     </main>
   );

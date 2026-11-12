@@ -14,7 +14,14 @@ export function getDb() {
   }
 
   if (!database) {
-    client = postgres(url, { max: 1, prepare: false });
+    const local = /@(localhost|127\.0\.0\.1)(:|\/)/.test(url);
+    client = postgres(url, {
+      max: 1,
+      prepare: false,
+      connect_timeout: 15,
+      idle_timeout: 20,
+      ...(!local && !/sslmode=/i.test(url) ? { ssl: "require" as const } : {}),
+    });
     database = drizzle(client, { schema });
   }
 

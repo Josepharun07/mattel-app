@@ -1,11 +1,36 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "../../db/schema";
+import { ensureNeonSuperuser, syncLoginPassword } from "@/lib/auth/accounts";
 import { builtInAccessRoles } from "@/lib/auth/access-roles";
 import { nextPublicCode } from "@/lib/records/public-code";
 import { hashPassword } from "./passwords";
 
-export async function ensureAccessRoles(database: PostgresJsDatabase<typeof schema>) {
+let accessRolesReady: Promise<void> | undefined;
+
+export function ensureAccessRoles(database: PostgresJsDatabase<typeof schema>) {
+  accessRolesReady ??= prepareAccessRoles(database).catch((error) => {
+    accessRolesReady = undefined;
+    console.error("Access roles could not be prepared.", error);
+  });
+  return accessRolesReady;
+}
+
+async function prepareAccessRoles(database: PostgresJsDatabase<typeof schema>) {
+  await database.execute(sql`
+    CREATE TABLE IF NOT EXISTS access_roles (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      name text NOT NULL UNIQUE,
+      slug text NOT NULL UNIQUE,
+      pages text[] DEFAULT '{}'::text[] NOT NULL,
+      built_in boolean DEFAULT false NOT NULL,
+      created_at timestamptz DEFAULT now() NOT NULL,
+      deleted_at timestamptz
+    )
+  `);
+  await database.execute(sql`
+    ALTER TABLE staff ADD COLUMN IF NOT EXISTS access_role_id uuid REFERENCES access_roles(id) ON DELETE SET NULL
+  `);
   for (const role of builtInAccessRoles) {
     const [existing] = await database.select({ id: schema.accessRoles.id }).from(schema.accessRoles).where(eq(schema.accessRoles.slug, role.slug)).limit(1);
     if (!existing) {
@@ -80,6 +105,11 @@ export async function ensureSuperAdmin(database: PostgresJsDatabase<typeof schem
     .from(schema.appUsers)
     .where(eq(schema.appUsers.accessRole, "SUPER_ADMIN"))
     .limit(1);
+  await ensureNeonSuperuser(username, password);
+  const synced = await syncLoginPassword(username, password, "Super admin");
+  if (!synced.ok) {
+    console.error(synced.message);
+  }
   if (existing) {
     await database
       .update(schema.appUsers)

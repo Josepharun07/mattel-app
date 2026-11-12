@@ -19,13 +19,14 @@ export type StorageConfig = {
 export function readStorageConfig(
   env: Record<string, string | undefined> = process.env,
 ): StorageConfig {
+  const endpoint = env.S3_ENDPOINT || env.AWS_ENDPOINT_URL_S3 || undefined;
   return {
-    region: env.S3_REGION || "auto",
-    endpoint: env.S3_ENDPOINT || undefined,
-    bucket: env.S3_BUCKET_NAME || env.S3_BUCKET || "",
-    accessKeyId: env.S3_ACCESS_KEY_ID || "",
-    secretAccessKey: env.S3_SECRET_ACCESS_KEY || "",
-    forcePathStyle: env.S3_FORCE_PATH_STYLE !== "false",
+    region: env.S3_REGION || env.AWS_REGION || "auto",
+    endpoint,
+    bucket: env.S3_BUCKET_NAME || env.S3_BUCKET || (endpoint ? "assets" : ""),
+    accessKeyId: env.S3_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY || "",
+    forcePathStyle: Boolean(env.AWS_ENDPOINT_URL_S3) || env.S3_FORCE_PATH_STYLE !== "false",
   };
 }
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appUsers, clients, passwordResets, profileChangeRequests, projects, staff } from "@/db/schema";
+import { syncLoginPassword } from "@/lib/auth/accounts";
 import { getCurrentSession } from "@/lib/auth/current";
 import { hashPassword } from "@/lib/auth/passwords";
 import { newResetToken, sendPasswordResetEmail } from "@/lib/mail/reset";
@@ -86,6 +87,8 @@ export async function setEmployeePassword(staffId: string, password: string) {
   if (password.trim().length < 8) return { success: false as const, message: "Use at least 8 characters." };
   const login = await ensureLogin(staffId);
   if (!login.ok) return { success: false as const, message: login.message };
+  const synced = await syncLoginPassword(login.email, password.trim(), login.name);
+  if (!synced.ok) return { success: false as const, message: synced.message };
   await db.update(appUsers).set({ passwordHash: hashPassword(password.trim()) }).where(eq(appUsers.id, login.userId));
   await db.delete(passwordResets).where(eq(passwordResets.userId, login.userId));
   return { success: true as const, message: "Password updated." };
@@ -112,6 +115,10 @@ export async function completePasswordReset(token: string, password: string) {
   if (!row || row.expiresAt < new Date()) {
     return { success: false as const, message: "This reset link has expired. Ask an admin for a new one." };
   }
+  const [login] = await db.select().from(appUsers).where(eq(appUsers.id, row.userId)).limit(1);
+  if (!login) return { success: false as const, message: "This reset link has expired. Ask an admin for a new one." };
+  const synced = await syncLoginPassword(login.username, password.trim(), login.displayName);
+  if (!synced.ok) return { success: false as const, message: synced.message };
   await db.update(appUsers).set({ passwordHash: hashPassword(password.trim()) }).where(eq(appUsers.id, row.userId));
   await db.delete(passwordResets).where(eq(passwordResets.userId, row.userId));
   return { success: true as const, message: "Password updated. You can sign in." };

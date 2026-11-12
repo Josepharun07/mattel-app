@@ -7,15 +7,20 @@ export async function dashboardCounts() {
     return { lowStock: 0, overdueTools: 0 };
   }
   const today = new Date().toISOString().slice(0, 10);
-  const [stock, rentals] = await Promise.all([
-    db
-      .select({ id: inventoryItems.id })
-      .from(inventoryItems)
-      .where(and(isNull(inventoryItems.deletedAt), sql`${inventoryItems.currentStock} <= ${inventoryItems.lowStockThreshold}`)),
-    db
-      .select({ id: assetAssignments.id })
-      .from(assetAssignments)
-      .where(and(isNull(assetAssignments.actualReturnDate), isNull(assetAssignments.deletedAt), lt(assetAssignments.expectedReturnDate, today))),
-  ]);
-  return { lowStock: stock.length, overdueTools: rentals.length };
+  try {
+    const [stock, rentals] = await Promise.all([
+      db
+        .select({ id: inventoryItems.id })
+        .from(inventoryItems)
+        .where(and(isNull(inventoryItems.deletedAt), sql`${inventoryItems.currentStock} <= ${inventoryItems.lowStockThreshold}`)),
+      db
+        .select({ id: assetAssignments.id })
+        .from(assetAssignments)
+        .where(and(isNull(assetAssignments.actualReturnDate), isNull(assetAssignments.deletedAt), lt(assetAssignments.expectedReturnDate, today))),
+    ]);
+    return { lowStock: stock.length, overdueTools: rentals.length };
+  } catch (error) {
+    console.error("Dashboard counts failed.", error);
+    return { lowStock: 0, overdueTools: 0 };
+  }
 }

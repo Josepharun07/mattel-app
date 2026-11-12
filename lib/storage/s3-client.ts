@@ -27,7 +27,7 @@ export function publicObjectUrl(bucket: string, key: string, env: Record<string,
   if (base) {
     return `${base}/${key}`;
   }
-  const endpoint = env.S3_ENDPOINT?.replace(/\/$/, "");
+  const endpoint = (env.S3_ENDPOINT || env.AWS_ENDPOINT_URL_S3)?.replace(/\/$/, "");
   if (endpoint) {
     return `${endpoint}/${bucket}/${key}`;
   }

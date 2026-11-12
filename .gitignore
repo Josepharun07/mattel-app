@@ -47,3 +47,5 @@ next-env.d.ts
 # Keep local notes out of the repository. README.md is the only markdown file that is tracked.
 *.md
 !README.md
+.vercel
+.env*
